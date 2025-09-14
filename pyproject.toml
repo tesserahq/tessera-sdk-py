@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "tessera-sdk"
+version = "0.1.0"
+description = "A Python SDK for Tessera with Identies integration, authentication middleware, and user onboarding"
+authors = ["ejankowski@gmail.com"]
+license = "MIT"
+readme = "README.md"
+packages = [
+    { include = "tessera_sdk" }
+]
+
+[tool.poetry.dependencies]
+python = ">=3.11"
+requests = ">=2.25.0"
+pydantic = ">=2.0.0"
+urllib3 = ">=1.26.0"
+starlette = ">=0.27.0"
+sqlalchemy = "^2.0.39"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=7.0.0"
+pytest-cov = ">=4.0.0"
+black = "^25.1.0"
+ruff = "^0.11.6"
+isort = ">=5.0.0"
+mypy = ">=1.0.0"
+types-requests = ">=2.28.0"
+
+[tool.poetry.urls]
+homepage = "https://github.com/tesserahq/tessera-sdk-py"
+repository = "https://github.com/tesserahq/tessera-sdk-py"
+"bug tracker" = "https://github.com/tesserahq/tessera-sdk-py/issues"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
