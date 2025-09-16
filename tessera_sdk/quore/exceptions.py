@@ -1,5 +1,5 @@
 """
-Custom exceptions for the Identies client.
+Custom exceptions for the Quore client.
 """
 
 from ..base.exceptions import (
@@ -12,31 +12,31 @@ from ..base.exceptions import (
 )
 
 
-class IdentiesError(TesseraError):
-    """Base exception for all Identies-related errors."""
+class QuoreError(TesseraError):
+    """Base exception for all Quore-related errors."""
     pass
 
 
-class IdentiesClientError(TesseraClientError):
+class QuoreClientError(TesseraClientError):
     """Exception raised for client-side errors (4xx status codes)."""
     pass
 
 
-class IdentiesServerError(TesseraServerError):
+class QuoreServerError(TesseraServerError):
     """Exception raised for server-side errors (5xx status codes)."""
     pass
 
 
-class IdentiesAuthenticationError(TesseraAuthenticationError):
+class QuoreAuthenticationError(TesseraAuthenticationError):
     """Exception raised for authentication errors (401 status code)."""
     pass
 
 
-class IdentiesNotFoundError(TesseraNotFoundError):
+class QuoreNotFoundError(TesseraNotFoundError):
     """Exception raised when a resource is not found (404 status code)."""
     pass
 
 
-class IdentiesValidationError(TesseraValidationError):
+class QuoreValidationError(TesseraValidationError):
     """Exception raised for validation errors (400 status code)."""
     pass
