@@ -88,6 +88,7 @@ class BaseClient:
         """Get the client version."""
         try:
             from .. import __version__
+
             return __version__
         except ImportError:
             return "unknown"

@@ -1,5 +1,6 @@
 import os
 import logging
+from typing import Optional, List
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.exceptions import HTTPException
@@ -20,7 +21,12 @@ logger = logging.getLogger(__name__)
 
 
 class AuthenticationMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, identies_base_url: str = None):
+    def __init__(
+        self,
+        app,
+        identies_base_url: Optional[str] = None,
+        skip_paths: Optional[List[str]] = None,
+    ):
         super().__init__(app)
         # Get Identies base URL from parameter or environment variable
         self.identies_base_url = identies_base_url or os.getenv("IDENTIES_BASE_URL")
@@ -28,6 +34,13 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             raise ValueError(
                 "Identies base URL must be provided either as parameter or IDENTIES_BASE_URL environment variable"
             )
+
+        # Set default skip paths if none provided
+        self.skip_paths = (
+            skip_paths
+            if skip_paths is not None
+            else ["/health", "/openapi.json", "/docs"]
+        )
 
         # Initialize the Identies client
         self.identies_client = IdentiesClient(
@@ -111,7 +124,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 del self.identies_client.session.headers["X-API-Key"]
 
     async def dispatch(self, request: Request, call_next):
-        if request.url.path in ["/health", "/openapi.json", "/docs"]:
+        if request.url.path in self.skip_paths:
             return await call_next(request)
 
         # Check for X-API-Key header first
@@ -119,7 +132,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         if x_api_key:
             return await self._validate_api_key(request, x_api_key, call_next)
 
-        authorization: str = request.headers.get("Authorization")
+        authorization = request.headers.get("Authorization")
         if not authorization or not authorization.startswith("Bearer "):
             return JSONResponse(
                 status_code=401, content={"error": "Missing or invalid token"}

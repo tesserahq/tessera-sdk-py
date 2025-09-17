@@ -53,7 +53,7 @@ class IdentiesClient(BaseClient):
             timeout=timeout,
             max_retries=max_retries,
             session=session,
-            service_name="identies"
+            service_name="identies",
         )
 
     def _handle_identies_exceptions(self, e: Exception):
@@ -66,7 +66,7 @@ class IdentiesClient(BaseClient):
             TesseraServerError,
             TesseraError,
         )
-        
+
         if isinstance(e, TesseraAuthenticationError):
             raise IdentiesAuthenticationError(str(e), e.status_code)
         elif isinstance(e, TesseraNotFoundError):

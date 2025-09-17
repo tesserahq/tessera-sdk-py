@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
@@ -22,12 +22,15 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
     This middleware checks if request.user is set and handles onboarding if needed.
     """
 
-    def __init__(self, app, identies_base_url: str = None, user_service_factory=None):
+    def __init__(
+        self, app, identies_base_url: Optional[str] = None, user_service_factory=None
+    ):
         super().__init__(app)
         self.identies_base_url = identies_base_url
         self.user_service_factory = user_service_factory
 
         # Initialize Identies client if base URL is provided
+        self.identies_client: Optional[IdentiesClient]
         if self.identies_base_url:
             self.identies_client = IdentiesClient(
                 base_url=self.identies_base_url,
@@ -46,9 +49,6 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
         Process the request and handle user onboarding if needed.
         Only processes requests that have a user set in request.state.
         """
-        # Skip onboarding for health checks and docs
-        if request.url.path in ["/health", "/openapi.json", "/docs"]:
-            return await call_next(request)
 
         # Check if user is already set in request state
         if not hasattr(request.state, "user") or request.state.user is None:

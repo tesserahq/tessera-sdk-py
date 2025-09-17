@@ -53,7 +53,7 @@ class QuoreClient(BaseClient):
             timeout=timeout,
             max_retries=max_retries,
             session=session,
-            service_name="quore"
+            service_name="quore",
         )
 
     def _handle_quore_exceptions(self, e: Exception):
@@ -66,7 +66,7 @@ class QuoreClient(BaseClient):
             TesseraServerError,
             TesseraError,
         )
-        
+
         if isinstance(e, TesseraAuthenticationError):
             raise QuoreAuthenticationError(str(e), e.status_code)
         elif isinstance(e, TesseraNotFoundError):
@@ -107,18 +107,14 @@ class QuoreClient(BaseClient):
             QuoreAuthenticationError: If authentication fails
         """
         request_data = SummarizeRequest(
-            prompt_id=prompt_id,
-            text=text,
-            labels=labels or {}
+            prompt_id=prompt_id, text=text, labels=labels or {}
         )
 
         endpoint = f"/projects/{project_id}/summarize"
-        
+
         try:
             response = self._make_request(
-                HTTPMethods.POST,
-                endpoint,
-                data=request_data.model_dump()
+                HTTPMethods.POST, endpoint, data=request_data.model_dump()
             )
             return SummarizeResponse(**response.json())
         except Exception as e:
