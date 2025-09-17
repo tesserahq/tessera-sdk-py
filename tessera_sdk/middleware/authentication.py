@@ -124,8 +124,10 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 del self.identies_client.session.headers["X-API-Key"]
 
     async def dispatch(self, request: Request, call_next):
-        if request.url.path in self.skip_paths:
-            return await call_next(request)
+        # Check if the request path starts with any of the skip paths
+        for skip_path in self.skip_paths:
+            if request.url.path.startswith(skip_path):
+                return await call_next(request)
 
         # Check for X-API-Key header first
         x_api_key = request.headers.get("X-API-Key")
