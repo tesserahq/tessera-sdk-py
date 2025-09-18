@@ -10,6 +10,9 @@ class SummarizeRequest(BaseModel):
 
     text: str
     """Text content to be summarized."""
+    
+    query: str
+    """Query used for the summarization."""
 
     labels: Optional[Dict[str, Any]] = None
     """Optional labels/metadata for the summarization request."""
