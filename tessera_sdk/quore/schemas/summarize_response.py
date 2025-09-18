@@ -20,6 +20,9 @@ class SummarizeResponse(BaseModel):
 
     tokens_used: Optional[int] = None
     """Number of tokens used for the summarization."""
+    
+    query: Optional[str] = None
+    """Query used for the summarization."""
 
     class Config:
         """Pydantic model configuration."""
