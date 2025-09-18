@@ -87,6 +87,7 @@ class QuoreClient(BaseClient):
         project_id: str,
         prompt_id: str,
         text: str,
+        query: str,
         labels: Optional[Dict[str, Any]] = None,
     ) -> SummarizeResponse:
         """
@@ -107,7 +108,7 @@ class QuoreClient(BaseClient):
             QuoreAuthenticationError: If authentication fails
         """
         request_data = SummarizeRequest(
-            prompt_id=prompt_id, text=text, labels=labels or {}
+            prompt_id=prompt_id, text=text, labels=labels or {}, query=query
         )
 
         endpoint = f"/projects/{project_id}/summarize"
