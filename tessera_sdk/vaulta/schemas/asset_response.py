@@ -6,7 +6,7 @@ from enum import Enum
 
 class AssetState(str, Enum):
     """Enumeration of valid asset states."""
-    
+
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -19,22 +19,22 @@ class AssetBase(BaseModel):
 
     name: str
     """Human readable name for the file."""
-    
+
     filename: str
     """Original filename."""
-    
+
     mime_type: str
     """File type (e.g., application/pdf, image/jpeg)."""
-    
+
     size: int
     """File size in bytes."""
-    
+
     labels: Dict[str, Any] = Field(default_factory=dict)
     """Dictionary of labels."""
-    
+
     state: str
     """Current state of the asset."""
-    
+
     state_message: Optional[str] = None
     """Optional message describing the current state."""
 

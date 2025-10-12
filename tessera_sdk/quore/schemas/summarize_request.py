@@ -10,7 +10,7 @@ class SummarizeRequest(BaseModel):
 
     text: str
     """Text content to be summarized."""
-    
+
     query: str
     """Query used for the summarization."""
 

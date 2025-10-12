@@ -4,12 +4,13 @@ This document describes the available clients in the Tessera SDK and their usage
 
 ## Overview
 
-The Tessera SDK now includes two main clients:
+The Tessera SDK now includes three main clients:
 
 1. **IdentiesClient** - For user authentication and identity management
 2. **QuoreClient** - For text summarization and NLP operations
+3. **SendlyClient** - For email sending and management
 
-Both clients share a common base architecture for consistency and maintainability.
+All clients share a common base architecture for consistency and maintainability.
 
 ## Architecture
 
@@ -97,6 +98,71 @@ print(f"Tokens used: {result.tokens_used}")
 - `created_at: datetime` - Creation timestamp
 - `tokens_used: int` - Token count
 
+## SendlyClient
+
+### Usage
+
+```python
+from tessera_sdk import SendlyClient
+from tessera_sdk.sendly.schemas import SendEmailRequest
+
+client = SendlyClient(
+    base_url="https://sendly-api.yourdomain.com",
+    api_token="your-api-token"
+)
+
+# Send an email
+request = SendEmailRequest(
+    name="Welcome Email",
+    tenant_id="your-tenant-id",
+    provider_id="your-provider-id",
+    from_email="hello@example.com",
+    subject="Welcome to our platform!",
+    html="<html><body>Hello ${name}! Welcome to ${organizationName}.</body></html>",
+    to=["user@example.com"],
+    template_variables={
+        "name": "John Doe",
+        "organizationName": "Acme Corp"
+    }
+)
+
+result = client.send_email(request)
+
+print(f"Email sent! Status: {result.status}")
+print(f"Email ID: {result.id}")
+print(f"Sent at: {result.sent_at}")
+```
+
+### Available Methods
+
+- `send_email(request: SendEmailRequest)` - Send an email with template variable substitution
+
+### Request/Response Schemas
+
+#### SendEmailRequest
+- `name: str` - Name/identifier for the email
+- `tenant_id: str` - Tenant identifier
+- `provider_id: str` - Provider identifier
+- `from_email: str` - Sender email address
+- `subject: str` - Email subject line
+- `html: str` - HTML content with template variables (e.g., ${variableName})
+- `template_variables: Dict[str, Any]` - Variables to replace in the template
+
+#### SendEmailResponse
+- `id: str` - Unique identifier for the email record
+- `from_email: str` - Sender email address
+- `to_email: str` - Recipient email address
+- `subject: str` - Email subject line
+- `body: str` - Processed email body with variables replaced
+- `status: str` - Email status (e.g., 'sent', 'failed')
+- `provider_id: str` - Provider identifier
+- `provider_message_id: str` - Provider's message identifier
+- `tenant_id: str` - Tenant identifier
+- `sent_at: datetime` - When the email was sent
+- `error_message: str` - Error message if failed (optional)
+- `created_at: datetime` - Record creation timestamp
+- `updated_at: datetime` - Last update timestamp
+
 ## Error Handling
 
 Both clients use a hierarchical exception system:
@@ -117,6 +183,9 @@ Each client has its own exception classes that inherit from the base exceptions:
 
 #### QuoreClient
 - `QuoreError`, `QuoreClientError`, etc.
+
+#### SendlyClient
+- `SendlyError`, `SendlyClientError`, etc.
 
 ## Configuration
 

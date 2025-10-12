@@ -1,5 +1,5 @@
 """
-Custom exceptions for the Vaulta client.
+Custom exceptions for the Sendly client.
 """
 
 from ..base.exceptions import (
@@ -12,37 +12,37 @@ from ..base.exceptions import (
 )
 
 
-class VaultaError(TesseraError):
-    """Base exception for all Vaulta-related errors."""
+class SendlyError(TesseraError):
+    """Base exception for all Sendly-related errors."""
 
     pass
 
 
-class VaultaClientError(TesseraClientError):
+class SendlyClientError(TesseraClientError):
     """Exception raised for client-side errors (4xx status codes)."""
 
     pass
 
 
-class VaultaServerError(TesseraServerError):
+class SendlyServerError(TesseraServerError):
     """Exception raised for server-side errors (5xx status codes)."""
 
     pass
 
 
-class VaultaAuthenticationError(TesseraAuthenticationError):
+class SendlyAuthenticationError(TesseraAuthenticationError):
     """Exception raised for authentication errors (401 status code)."""
 
     pass
 
 
-class VaultaNotFoundError(TesseraNotFoundError):
+class SendlyNotFoundError(TesseraNotFoundError):
     """Exception raised when a resource is not found (404 status code)."""
 
     pass
 
 
-class VaultaValidationError(TesseraValidationError):
+class SendlyValidationError(TesseraValidationError):
     """Exception raised for validation errors (400 status code)."""
 
     pass

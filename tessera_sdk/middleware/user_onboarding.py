@@ -68,11 +68,16 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
             else:
                 # Onboarding failed, we cannot proceed with a UserNeedsOnboarding object
                 # as downstream code expects a user with an 'id' attribute
-                logger.error(f"User onboarding failed for external_id: {user.external_id}, cannot proceed with incomplete user object")
+                logger.error(
+                    f"User onboarding failed for external_id: {user.external_id}, cannot proceed with incomplete user object"
+                )
                 from starlette.responses import JSONResponse
+
                 return JSONResponse(
                     status_code=500,
-                    content={"detail": "User onboarding failed. Please contact support if this issue persists."}
+                    content={
+                        "detail": "User onboarding failed. Please contact support if this issue persists."
+                    },
                 )
 
         return await call_next(request)
@@ -86,7 +91,7 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
         # Check if user is a UserNeedsOnboarding object
         if isinstance(user, UserNeedsOnboarding):
             return user.needs_onboarding
-        
+
         # Example: Check if user has required fields for onboarding
         if hasattr(user, "needs_onboarding"):
             return user.needs_onboarding

@@ -6,6 +6,6 @@ from .asset_response import AssetResponse, AssetBase, AssetState
 
 __all__ = [
     "AssetResponse",
-    "AssetBase", 
+    "AssetBase",
     "AssetState",
 ]
