@@ -17,7 +17,7 @@ class SummarizeRequest(BaseModel):
     labels: Optional[Dict[str, Any]] = None
     """Optional labels/metadata for the summarization request."""
 
-    class Config:
+    class ConfigDict:
         """Pydantic model configuration."""
 
         from_attributes = True

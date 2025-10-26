@@ -49,10 +49,7 @@ class UserResponse(BaseModel):
     updated_at: datetime
     """Timestamp when the user record was last updated."""
 
-    avatar_url: Optional[str] = None
-    """URL to the user's profile picture or avatar."""
-
-    class Config:
+    class ConfigDict:
         """Pydantic model configuration."""
 
         from_attributes = True

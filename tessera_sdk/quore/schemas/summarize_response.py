@@ -24,7 +24,7 @@ class SummarizeResponse(BaseModel):
     query: Optional[str] = None
     """Query used for the summarization."""
 
-    class Config:
+    class ConfigDict:
         """Pydantic model configuration."""
 
         from_attributes = True
