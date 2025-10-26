@@ -36,7 +36,7 @@ class SendEmailRequest(BaseModel):
     template_variables: Dict[str, Any] = Field(default_factory=dict)
     """Variables to be replaced in the email template."""
 
-    class Config:
+    class ConfigDict:
         """Pydantic model configuration."""
 
         from_attributes = True

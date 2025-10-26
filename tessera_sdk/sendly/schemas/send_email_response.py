@@ -45,7 +45,7 @@ class SendEmailResponse(BaseModel):
     updated_at: Optional[datetime] = None
     """Timestamp when the record was last updated."""
 
-    class Config:
+    class ConfigDict:
         """Pydantic model configuration."""
 
         from_attributes = True

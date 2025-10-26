@@ -61,7 +61,7 @@ class AssetResponse(AssetBase):
     updated_at: Optional[datetime] = None
     """Timestamp when the asset was last updated."""
 
-    class Config:
+    class ConfigDict:
         """Pydantic model configuration."""
 
         from_attributes = True
