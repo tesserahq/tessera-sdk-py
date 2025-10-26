@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 class TemplateVariables(BaseModel):
     """Schema for template variables."""
 
-    class Config:
+    class ConfigDict:
         """Pydantic model configuration."""
 
         from_attributes = True
