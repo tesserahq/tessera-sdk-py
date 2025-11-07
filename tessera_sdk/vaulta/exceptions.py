@@ -46,4 +46,3 @@ class VaultaValidationError(TesseraValidationError):
     """Exception raised for validation errors (400 status code)."""
 
     pass
-
