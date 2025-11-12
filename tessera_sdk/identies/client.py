@@ -100,12 +100,13 @@ class IdentiesClient(BaseClient):
         except Exception as e:
             self._handle_identies_exceptions(e)
 
-    def get_user(self) -> UserResponse:
+    def get_user(self, user_id: Optional[str] = None) -> UserResponse:
         """
-        Get a specific user.
+        Get a user.
 
         Args:
-            None
+            user_id: Optional ID of the user to retrieve. If omitted, returns
+                the user associated with the current token.
 
         Returns:
             UserResponse object
@@ -114,7 +115,8 @@ class IdentiesClient(BaseClient):
             IdentiesNotFoundError: If client is not found
         """
         try:
-            response = self._make_request(HTTPMethods.GET, "/user")
+            endpoint = f"/users/{user_id}" if user_id else "/user"
+            response = self._make_request(HTTPMethods.GET, endpoint)
             return UserResponse(**response.json())
         except Exception as e:
             self._handle_identies_exceptions(e)
