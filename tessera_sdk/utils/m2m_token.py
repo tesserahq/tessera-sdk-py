@@ -10,6 +10,8 @@ from pydantic import BaseModel
 from ..config import get_settings
 from ..base.client import BaseClient
 from ..constants import HTTPMethods
+from ..utils.cache import Cache
+import json
 
 
 class M2MTokenRequest(BaseModel):
@@ -35,12 +37,16 @@ logger = logging.getLogger(__name__)
 
 class M2MTokenClient(BaseClient):
     """Client for obtaining machine-to-machine tokens from OAuth/OIDC providers."""
+    
+    cache_key_PREFIX = "m2m_token"
 
     def __init__(
         self,
         provider_domain: Optional[str] = None,
         timeout: int = 30,
         max_retries: int = 3,
+        cache_buffer_seconds: int = 60,
+        cache_service: Optional[Cache] = None,
         session: Optional[requests.Session] = None,
     ):
         """
@@ -51,10 +57,15 @@ class M2MTokenClient(BaseClient):
                            If not provided, will use settings.
             timeout: Request timeout in seconds
             max_retries: Maximum number of retries for failed requests
+            cache_buffer_seconds: Number of seconds before token expiry to refresh the token (default: 60)
             session: Optional requests.Session instance to use
         """
         self.settings = get_settings()
         self.provider_domain = provider_domain or self.settings.oidc_domain
+        self.cache_buffer_seconds = cache_buffer_seconds
+        self.cache_service = cache_service or Cache("m2m_token")
+
+
         if not self.provider_domain:
             raise ValueError(
                 "Provider domain must be provided either as a parameter or via settings"
@@ -93,11 +104,12 @@ class M2MTokenClient(BaseClient):
         client_id = client_id or self.settings.service_account_client_id
         client_secret = client_secret or self.settings.service_account_client_secret
         audience = audience or self.settings.oidc_api_audience
-
+        
         if not client_id or not client_secret:
             raise ValueError(
                 "Client ID and Client Secret must be provided either as parameters or via settings"
             )
+            
 
         payload = M2MTokenRequest(
             client_id=client_id, client_secret=client_secret, audience=audience
@@ -161,15 +173,19 @@ class M2MTokenClient(BaseClient):
         client_secret: Optional[str] = None,
         audience: str = "",
         timeout: int = 30,
+        force_refresh: bool = False,
     ) -> M2MTokenResponse:
         """
         Get a machine-to-machine access token from OAuth/OIDC provider.
+        
+        Uses cached token from Redis if available and not expired. Set force_refresh=True to ignore cache.
 
         Args:
             client_id: The OAuth client ID (uses settings.service_account_client_id if not provided)
             client_secret: The OAuth client secret (uses settings.service_account_client_secret if not provided)
             audience: The API audience (identifier)
             timeout: Request timeout in seconds
+            force_refresh: If True, ignores cache and fetches a new token
 
         Returns:
             M2MTokenResponse containing the access token and metadata
@@ -180,6 +196,19 @@ class M2MTokenClient(BaseClient):
             TesseraError: For other unexpected failures
             ValueError: If the response is invalid or credentials are missing
         """
+        # Use settings defaults if not provided
+        resolved_client_id = client_id or self.settings.service_account_client_id
+        resolved_audience = audience or self.settings.oidc_api_audience
+        
+        # Generate Redis key
+        cache_key = self._generate_cache_key(resolved_client_id, resolved_audience)
+        
+        # Return cached token if valid and not forcing refresh
+        if not force_refresh:
+            cached_token = self._get_cached_token(cache_key)
+            if cached_token:
+                return cached_token
+            
         return await asyncio.to_thread(
             self._request_token, client_id, client_secret, audience, timeout
         )
@@ -210,6 +239,80 @@ class M2MTokenClient(BaseClient):
             ValueError: If the response is invalid or credentials are missing
         """
         return self._request_token(client_id, client_secret, audience, timeout)
+    
+    def _get_cached_token(self, cache_key: str) -> Optional[M2MTokenResponse]:
+        """
+        Retrieve cached token from Redis.
+
+        Args:
+            cache_key: The Redis key to retrieve
+
+        Returns:
+            M2MTokenResponse if found and valid, None otherwise
+        """
+        try:
+            cached_data = self.cache_service.read(cache_key)
+            if cached_data:
+                token_data = json.loads(cached_data)
+                return M2MTokenResponse(**token_data)
+        except Exception as e:
+            # Log error but don't fail - just return None to fetch a new token
+            logger.warning(f"Failed to retrieve cached token from Redis: {e}")
+        return None
+
+    def _cache_token(self, token_response: M2MTokenResponse, cache_key: str) -> None:
+        """
+        Cache the token response in Redis with expiration.
+
+        Args:
+            token_response: The token response to cache
+            cache_key: The Redis key for this token
+        """
+        try:
+            # Calculate TTL with buffer (expires_in - buffer_seconds)
+            ttl = max(token_response.expires_in - self.cache_buffer_seconds, 1)
+
+            # Store token data as JSON in Redis
+            token_json = token_response.model_dump_json()
+            self.cache_service.write(cache_key, token_json, ttl=ttl)
+        except Exception as e:
+            # Log error but don't fail - caching is optional
+            logger.warning(f"Failed to cache token in Redis: {e}")
+
+    def clear_cache(
+        self, client_id: Optional[str] = None, audience: Optional[str] = None
+    ) -> bool:
+        """
+        Clear cached token(s) from Redis.
+
+        Args:
+            client_id: Optional client_id to clear specific token. If not provided, uses settings.
+            audience: Optional audience to clear specific token. If not provided, uses settings.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            resolved_client_id = client_id or self.settings.service_account_client_id
+            resolved_audience = audience or self.settings.oidc_api_audience
+            cache_key = self._generate_cache_key(resolved_client_id, resolved_audience)
+            return self.cache_service.delete(cache_key)
+        except Exception as e:
+            logger.warning(f"Failed to clear cached token from Redis: {e}")
+            return False
+        
+    def _generate_cache_key(self, client_id: str, audience: str) -> str:
+        """
+        Generate a Redis key based on client_id and audience.
+
+        Args:
+            client_id: The OAuth client ID
+            audience: The API audience
+
+        Returns:
+            A Redis key string
+        """
+        return f"{self.cache_key_PREFIX}:{client_id}:{audience}"
 
 
 # Convenience function for quick token retrieval

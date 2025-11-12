@@ -6,6 +6,13 @@ from sqlalchemy.engine.url import make_url, URL
 
 
 class Settings(BaseSettings):
+    redis_host: str = Field(
+        default="localhost", json_schema_extra={"env": "REDIS_HOST"}
+    )
+    redis_port: int = Field(default=6379, json_schema_extra={"env": "REDIS_PORT"})
+    redis_namespace: str = Field(
+        default="llama_index", json_schema_extra={"env": "REDIS_NAMESPACE"}
+    )
     identies_base_url: str = Field(
         default="https://identies.tessera.com",
         json_schema_extra={"env": "IDENTIES_BASE_URL"},
@@ -43,13 +50,6 @@ class Settings(BaseSettings):
     def is_test(self) -> bool:
         """Check if the current environment is test."""
         return self.environment.lower() == "test"
-
-    @property
-    def database_url_obj(self) -> URL:
-        """Return the database URL as a URL object using sqlalchemy's make_url."""
-        if not self.database_url:
-            raise ValueError("Database URL is not set.")
-        return make_url(self.database_url)
 
     class Config:
         env_file = ".env"
