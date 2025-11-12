@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tessera-sdk"
-version = "0.1.0"
+version = "0.1.1"
 description = "A Python SDK for Tessera with Identies integration, authentication middleware, and user onboarding"
 authors = ["ejankowski@gmail.com"]
 license = "MIT"
@@ -17,6 +17,7 @@ urllib3 = ">=1.26.0"
 starlette = ">=0.27.0"
 sqlalchemy = "^2.0.39"
 cryptography = "^46.0.3"
+pydantic-settings = "^2.9.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=7.0.0"

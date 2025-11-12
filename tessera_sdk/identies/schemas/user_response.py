@@ -49,6 +49,9 @@ class UserResponse(BaseModel):
     updated_at: datetime
     """Timestamp when the user record was last updated."""
 
+    external_id: Optional[str] = None
+    """External ID of the user. Only present if the user is not a local user."""
+
     class ConfigDict:
         """Pydantic model configuration."""
 

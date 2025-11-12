@@ -1,0 +1,62 @@
+import os
+from pydantic import AliasChoices, Field, model_validator
+from typing import Optional
+from pydantic_settings import BaseSettings
+from sqlalchemy.engine.url import make_url, URL
+
+
+class Settings(BaseSettings):
+    identies_base_url: str = Field(
+        default="https://identies.tessera.com",
+        json_schema_extra={"env": "IDENTIES_BASE_URL"},
+    )
+    environment: str = Field(
+        default="development",
+        validation_alias=AliasChoices("ENV", "ENVIRONMENT"),
+    )
+    log_level: str = Field(default="INFO", json_schema_extra={"env": "LOG_LEVEL"})
+    disable_auth: bool = Field(default=False, json_schema_extra={"env": "DISABLE_AUTH"})
+    port: int = Field(default=8000, json_schema_extra={"env": "PORT"})
+    identies_host: Optional[str] = Field(
+        default=None,
+        json_schema_extra={"env": "IDENTIES_HOST"},
+    )
+
+    oidc_domain: str = "test.oidc.com"
+    oidc_api_audience: str = "https://test-api"
+    oidc_issuer: str = "https://test.oidc.com/"
+    oidc_algorithms: str = "RS256"
+
+    service_account_client_id: str = Field(
+        default="", json_schema_extra={"env": "SERVICE_ACCOUNT_CLIENT_ID"}
+    )
+    service_account_client_secret: str = Field(
+        default="", json_schema_extra={"env": "SERVICE_ACCOUNT_CLIENT_SECRET"}
+    )
+
+    @property
+    def is_production(self) -> bool:
+        """Check if the current environment is production."""
+        return self.environment.lower() == "production"
+
+    @property
+    def is_test(self) -> bool:
+        """Check if the current environment is test."""
+        return self.environment.lower() == "test"
+
+    @property
+    def database_url_obj(self) -> URL:
+        """Return the database URL as a URL object using sqlalchemy's make_url."""
+        if not self.database_url:
+            raise ValueError("Database URL is not set.")
+        return make_url(self.database_url)
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        extra = "allow"  # Allow extra environment variables
+
+
+def get_settings() -> Settings:
+    """Get application settings with required environment variables."""
+    return Settings()
