@@ -149,7 +149,9 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
         try:
             # Now manually pass the raw token with database manager
-            verify_token_dependency(request, token, database_manager=self.database_manager)
+            verify_token_dependency(
+                request, token, database_manager=self.database_manager
+            )
 
             # Check if user was set after token verification
             if not hasattr(request.state, "user") or request.state.user is None:

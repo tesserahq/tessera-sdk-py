@@ -10,30 +10,6 @@ from tessera_sdk.core.database_manager import DatabaseManager
 
 security = HTTPBearer()
 
-# Global database manager instance (can be set by application startup)
-_database_manager: DatabaseManager = None
-
-
-def get_database_manager() -> DatabaseManager:
-    """
-    Get or create a database manager instance.
-    
-    This function should be called after the database manager is initialized
-    in your application startup. If not initialized, it will raise an error.
-    """
-    global _database_manager
-    if _database_manager is None:
-        raise RuntimeError(
-            "DatabaseManager not initialized. Please initialize it in your application startup."
-        )
-    return _database_manager
-
-
-def set_database_manager(database_manager: DatabaseManager):
-    """Set the global database manager instance."""
-    global _database_manager
-    _database_manager = database_manager
-
 
 class UnauthorizedException(HTTPException):
     def __init__(self, detail: str, **kwargs):
@@ -48,14 +24,15 @@ class UnauthenticatedException(HTTPException):
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Requires authentication"
         )
 
+
 def verify_token_dependency(
-    request: Request, 
-    token: str, 
+    request: Request,
+    token: str,
     database_manager: DatabaseManager,
 ):
     """
     Verify a JWT token and set the user in request state.
-    
+
     Args:
         request: The FastAPI request object
         token: The JWT token to verify
@@ -63,7 +40,7 @@ def verify_token_dependency(
         database_manager: Optional DatabaseManager instance (used to create session if db is None)
     """
     db = database_manager.create_session()
-    
+
     try:
         verifier = VerifyToken(db)
         user = verifier.verify(token)
