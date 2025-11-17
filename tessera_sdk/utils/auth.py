@@ -51,8 +51,7 @@ class UnauthenticatedException(HTTPException):
 def verify_token_dependency(
     request: Request, 
     token: str, 
-    db: Session = None,
-    database_manager: DatabaseManager = None
+    database_manager: DatabaseManager,
 ):
     """
     Verify a JWT token and set the user in request state.
@@ -63,11 +62,7 @@ def verify_token_dependency(
         db: Optional database session (if provided, will be used directly)
         database_manager: Optional DatabaseManager instance (used to create session if db is None)
     """
-    if db is None:
-        if database_manager is None:
-            # Fallback to global database manager for backward compatibility
-            database_manager = get_database_manager()
-        db = database_manager.SessionLocal()
+    db = database_manager.create_session()
     
     try:
         verifier = VerifyToken(db)
