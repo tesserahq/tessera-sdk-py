@@ -1,12 +1,38 @@
 import jwt
 from fastapi import HTTPException, status, Request
 from fastapi.security import HTTPBearer
+from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.services.user_service import UserService
 from tessera_sdk.schemas.user import UserNeedsOnboarding
+from tessera_sdk.core.database_manager import DatabaseManager
 
 security = HTTPBearer()
+
+# Global database manager instance (can be set by application startup)
+_database_manager: DatabaseManager = None
+
+
+def get_database_manager() -> DatabaseManager:
+    """
+    Get or create a database manager instance.
+    
+    This function should be called after the database manager is initialized
+    in your application startup. If not initialized, it will raise an error.
+    """
+    global _database_manager
+    if _database_manager is None:
+        raise RuntimeError(
+            "DatabaseManager not initialized. Please initialize it in your application startup."
+        )
+    return _database_manager
+
+
+def set_database_manager(database_manager: DatabaseManager):
+    """Set the global database manager instance."""
+    global _database_manager
+    _database_manager = database_manager
 
 
 class UnauthorizedException(HTTPException):
@@ -22,15 +48,33 @@ class UnauthenticatedException(HTTPException):
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Requires authentication"
         )
 
-
-def get_db_from_request(request: Request):
-    return request.state.db_session
-
-
-def verify_token_dependency(request: Request, token: str):
-    verifier = VerifyToken(get_db_from_request(request))
-    user = verifier.verify(token)
-    request.state.user = user
+def verify_token_dependency(
+    request: Request, 
+    token: str, 
+    db: Session = None,
+    database_manager: DatabaseManager = None
+):
+    """
+    Verify a JWT token and set the user in request state.
+    
+    Args:
+        request: The FastAPI request object
+        token: The JWT token to verify
+        db: Optional database session (if provided, will be used directly)
+        database_manager: Optional DatabaseManager instance (used to create session if db is None)
+    """
+    if db is None:
+        if database_manager is None:
+            # Fallback to global database manager for backward compatibility
+            database_manager = get_database_manager()
+        db = database_manager.SessionLocal()
+    
+    try:
+        verifier = VerifyToken(db)
+        user = verifier.verify(token)
+        request.state.user = user
+    finally:
+        db.close()
 
 
 async def get_current_user(request: Request):

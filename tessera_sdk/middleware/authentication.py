@@ -8,6 +8,7 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from ..utils.auth import verify_token_dependency
+from ..core.database_manager import DatabaseManager
 from ..identies import IdentiesClient
 from ..identies.exceptions import (
     IdentiesError,
@@ -26,6 +27,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         app,
         identies_base_url: Optional[str] = None,
         skip_paths: Optional[List[str]] = None,
+        database_manager: Optional[DatabaseManager] = None,
     ):
         super().__init__(app)
         # Get Identies base URL from parameter or environment variable
@@ -41,6 +43,9 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             if skip_paths is not None
             else ["/health", "/openapi.json", "/docs"]
         )
+
+        # Store database manager for creating sessions
+        self.database_manager = database_manager
 
         # Initialize the Identies client
         self.identies_client = IdentiesClient(
@@ -143,8 +148,8 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         token = authorization[len("Bearer ") :]
 
         try:
-            # Now manually pass the raw token
-            verify_token_dependency(request, token)
+            # Now manually pass the raw token with database manager
+            verify_token_dependency(request, token, database_manager=self.database_manager)
 
             # Check if user was set after token verification
             if not hasattr(request.state, "user") or request.state.user is None:

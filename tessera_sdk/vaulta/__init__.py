@@ -7,5 +7,3 @@ from .client import VaultaClient
 __all__ = [
     "VaultaClient",
 ]
-
-

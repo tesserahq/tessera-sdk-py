@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 class M2MTokenClient(BaseClient):
     """Client for obtaining machine-to-machine tokens from OAuth/OIDC providers."""
-    
+
     cache_key_PREFIX = "m2m_token"
 
     def __init__(
@@ -64,7 +64,6 @@ class M2MTokenClient(BaseClient):
         self.provider_domain = provider_domain or self.settings.oidc_domain
         self.cache_buffer_seconds = cache_buffer_seconds
         self.cache_service = cache_service or Cache("m2m_token")
-
 
         if not self.provider_domain:
             raise ValueError(
@@ -104,12 +103,11 @@ class M2MTokenClient(BaseClient):
         client_id = client_id or self.settings.service_account_client_id
         client_secret = client_secret or self.settings.service_account_client_secret
         audience = audience or self.settings.oidc_api_audience
-        
+
         if not client_id or not client_secret:
             raise ValueError(
                 "Client ID and Client Secret must be provided either as parameters or via settings"
             )
-            
 
         payload = M2MTokenRequest(
             client_id=client_id, client_secret=client_secret, audience=audience
@@ -177,7 +175,7 @@ class M2MTokenClient(BaseClient):
     ) -> M2MTokenResponse:
         """
         Get a machine-to-machine access token from OAuth/OIDC provider.
-        
+
         Uses cached token from Redis if available and not expired. Set force_refresh=True to ignore cache.
 
         Args:
@@ -199,16 +197,16 @@ class M2MTokenClient(BaseClient):
         # Use settings defaults if not provided
         resolved_client_id = client_id or self.settings.service_account_client_id
         resolved_audience = audience or self.settings.oidc_api_audience
-        
+
         # Generate Redis key
         cache_key = self._generate_cache_key(resolved_client_id, resolved_audience)
-        
+
         # Return cached token if valid and not forcing refresh
         if not force_refresh:
             cached_token = self._get_cached_token(cache_key)
             if cached_token:
                 return cached_token
-            
+
         return await asyncio.to_thread(
             self._request_token, client_id, client_secret, audience, timeout
         )
@@ -239,7 +237,7 @@ class M2MTokenClient(BaseClient):
             ValueError: If the response is invalid or credentials are missing
         """
         return self._request_token(client_id, client_secret, audience, timeout)
-    
+
     def _get_cached_token(self, cache_key: str) -> Optional[M2MTokenResponse]:
         """
         Retrieve cached token from Redis.
@@ -300,7 +298,7 @@ class M2MTokenClient(BaseClient):
         except Exception as e:
             logger.warning(f"Failed to clear cached token from Redis: {e}")
             return False
-        
+
     def _generate_cache_key(self, client_id: str, audience: str) -> str:
         """
         Generate a Redis key based on client_id and audience.
