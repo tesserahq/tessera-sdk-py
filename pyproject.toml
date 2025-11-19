@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tessera-sdk"
-version = "0.1.1"
+version = "0.1.2"
 description = "A Python SDK for Tessera with Identies integration, authentication middleware, and user onboarding"
 authors = ["ejankowski@gmail.com"]
 license = "MIT"
