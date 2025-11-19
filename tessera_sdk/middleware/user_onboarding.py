@@ -140,7 +140,7 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
             )
 
             # Create UserService instance using the factory
-            user_service = self.user_service_factory(request)
+            user_service = self.user_service_factory()
 
             # Use the user service to onboard the user
             onboarded_user = user_service.onboard_user(user_data)
