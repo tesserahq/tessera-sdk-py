@@ -3,8 +3,8 @@ from fastapi import HTTPException, status, Request
 from fastapi.security import HTTPBearer
 from sqlalchemy.orm import Session
 
-from app.config import get_settings
-from app.services.user_service import UserService
+from tessera_sdk.config import get_settings
+from tessera_sdk.services.user_service import UserService
 from tessera_sdk.schemas.user import UserNeedsOnboarding
 from tessera_sdk.core.database_manager import DatabaseManager
 

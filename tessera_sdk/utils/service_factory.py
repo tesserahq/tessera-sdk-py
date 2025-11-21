@@ -31,7 +31,9 @@ class ServiceFactory:
         return self.service_class(db=db_session)
 
 
-def create_service_factory(service_class: type, db_manager: DatabaseManager) -> ServiceFactory:
+def create_service_factory(
+    service_class: type, db_manager: DatabaseManager
+) -> ServiceFactory:
     """
     Create a service factory for the given service class.
 

@@ -40,6 +40,16 @@ class Settings(BaseSettings):
     service_account_client_secret: str = Field(
         default="", json_schema_extra={"env": "SERVICE_ACCOUNT_CLIENT_SECRET"}
     )
+    nats_enabled: bool = Field(default=False, json_schema_extra={"env": "NATS_ENABLED"})
+    nats_url: str = Field(
+        default="nats://localhost:4222", json_schema_extra={"env": "NATS_URL"}
+    )
+    event_type_prefix: str = Field(
+        default="com.mylinden", json_schema_extra={"env": "EVENT_TYPE_PREFIX"}
+    )
+    event_source_prefix: str = Field(
+        default="linden-api", json_schema_extra={"env": "EVENT_SOURCE_PREFIX"}
+    )
 
     @property
     def is_production(self) -> bool:
