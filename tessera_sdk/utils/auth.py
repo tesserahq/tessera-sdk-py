@@ -1,12 +1,9 @@
 import jwt
 from fastapi import HTTPException, status, Request
 from fastapi.security import HTTPBearer
-from sqlalchemy.orm import Session
 
 from tessera_sdk.config import get_settings
-from tessera_sdk.services.user_service import UserService
 from tessera_sdk.schemas.user import UserNeedsOnboarding
-from tessera_sdk.core.database_manager import DatabaseManager
 
 security = HTTPBearer()
 
@@ -28,7 +25,7 @@ class UnauthenticatedException(HTTPException):
 def verify_token_dependency(
     request: Request,
     token: str,
-    database_manager: DatabaseManager,
+    user_service_factory,
 ):
     """
     Verify a JWT token and set the user in request state.
@@ -39,14 +36,10 @@ def verify_token_dependency(
         db: Optional database session (if provided, will be used directly)
         database_manager: Optional DatabaseManager instance (used to create session if db is None)
     """
-    db = database_manager.create_session()
 
-    try:
-        verifier = VerifyToken(db)
-        user = verifier.verify(token)
-        request.state.user = user
-    finally:
-        db.close()
+    verifier = VerifyToken(user_service_factory)
+    user = verifier.verify(token)
+    request.state.user = user
 
 
 async def get_current_user(request: Request):
@@ -60,10 +53,9 @@ async def get_current_user(request: Request):
 class VerifyToken:
     """Does all the token verification using PyJWT"""
 
-    def __init__(self, db_session):
+    def __init__(self, user_service_factory):
         self.config = get_settings()
-        self.db = db_session  # Store the DB session
-        self.user_service = UserService(self.db)
+        self.user_service_factory = user_service_factory
 
         if self.config.oidc_domain is None:
             raise ValueError("oidc domain is not set in the configuration.")
@@ -107,8 +99,10 @@ class VerifyToken:
         # Extract user ID from JWT payload
         external_user_id = payload["sub"]
 
+        user_service = self.user_service_factory()
+
         # User not in cache or cache was invalid, check database
-        user = self.user_service.get_user_by_external_id(external_user_id)
+        user = user_service.get_user_by_external_id(external_user_id)
 
         if user:
             # User exists in database, cache the existence

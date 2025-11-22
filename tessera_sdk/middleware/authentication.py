@@ -27,9 +27,11 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         app,
         identies_base_url: Optional[str] = None,
         skip_paths: Optional[List[str]] = None,
-        database_manager: Optional[DatabaseManager] = None,
+        # database_manager: Optional[DatabaseManager] = None,
+        user_service_factory=None,
     ):
         super().__init__(app)
+        self.user_service_factory = user_service_factory
         # Get Identies base URL from parameter or environment variable
         self.identies_base_url = identies_base_url or os.getenv("IDENTIES_BASE_URL")
         if not self.identies_base_url:
@@ -45,7 +47,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         )
 
         # Store database manager for creating sessions
-        self.database_manager = database_manager
+        # self.database_manager = database_manager
 
         # Initialize the Identies client
         self.identies_client = IdentiesClient(
@@ -147,10 +149,12 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
         token = authorization[len("Bearer ") :]
 
+        # db = self.database_manager.create_session()
+
         try:
             # Now manually pass the raw token with database manager
             verify_token_dependency(
-                request, token, database_manager=self.database_manager
+                request, token, user_service_factory=self.user_service_factory
             )
 
             # Check if user was set after token verification
