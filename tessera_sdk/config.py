@@ -17,6 +17,18 @@ class Settings(BaseSettings):
         default="https://identies.tessera.com",
         json_schema_extra={"env": "IDENTIES_BASE_URL"},
     )
+    custos_api_url: str = Field(
+        default="https://custos.tessera.com",
+        json_schema_extra={"env": "CUSTOS_API_URL"},
+    )
+    authorization_cache_enabled: bool = Field(
+        default=False,
+        json_schema_extra={"env": "AUTHORIZATION_CACHE_ENABLED"},
+    )
+    authorization_cache_ttl: int = Field(
+        default=300,
+        json_schema_extra={"env": "AUTHORIZATION_CACHE_TTL"},
+    )
     environment: str = Field(
         default="development",
         validation_alias=AliasChoices("ENV", "ENVIRONMENT"),

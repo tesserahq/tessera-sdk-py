@@ -8,6 +8,7 @@ from .identies import IdentiesClient
 from .quore import QuoreClient
 from .vaulta import VaultaClient
 from .sendly import SendlyClient
+from .custos import CustosClient
 
 __version__ = "0.1.0"
 
@@ -16,4 +17,5 @@ __all__ = [
     "QuoreClient",
     "VaultaClient",
     "SendlyClient",
+    "CustosClient",
 ]
