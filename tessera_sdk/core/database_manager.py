@@ -11,6 +11,7 @@ from sqlalchemy.orm import (
     sessionmaker,
 )
 from sqlalchemy.orm.session import Session as SessionType
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 
 
 class DatabaseManager:
@@ -56,6 +57,9 @@ class DatabaseManager:
             pool_recycle=pool_recycle,
             pool_use_lifo=pool_use_lifo,
             connect_args={"application_name": application_name},
+        )
+        SQLAlchemyInstrumentor().instrument(
+            engine=self.engine,
         )
 
         # Create session factory

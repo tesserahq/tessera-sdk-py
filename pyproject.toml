@@ -22,6 +22,9 @@ redis = ">=5.0.1,<8"
 faststream = {extras = ["nats"], version = "^0.6.3"}
 jinja2 = "^3.1.6"
 
+opentelemetry-sdk = "^1.39.1"
+opentelemetry-instrumentation-sqlalchemy = "^0.60b1"
+
 [tool.poetry.group.dev.dependencies]
 pytest = ">=7.0.0"
 pytest-cov = ">=4.0.0"
