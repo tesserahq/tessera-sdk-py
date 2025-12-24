@@ -52,8 +52,8 @@ class UserResponse(BaseModel):
     external_id: Optional[str] = None
     """External ID of the user. Only present if the user is not a local user."""
 
-    system_account: Optional[bool] = None
-    """Whether the user is a system account."""
+    service_account: Optional[bool] = None
+    """Whether the user is a service account."""
 
     class ConfigDict:
         """Pydantic model configuration."""
