@@ -152,31 +152,37 @@ class BaseClient:
                 )
 
             # Handle different status codes
+            class_name = self.__class__.__name__
             if response.status_code < 400:
                 return response
             elif response.status_code == 401:
-                raise TesseraAuthenticationError("Authentication failed")
+                raise TesseraAuthenticationError(
+                    f"[{class_name}] Authentication failed"
+                )
             elif response.status_code == 404:
-                raise TesseraNotFoundError("Resource not found")
+                raise TesseraNotFoundError(f"[{class_name}] Resource not found")
             elif response.status_code == 400:
                 try:
                     error_data = response.json()
                     detail = error_data.get("detail", "Bad request")
                 except (ValueError, KeyError):
                     detail = "Bad request"
-                raise TesseraValidationError(detail)
+                raise TesseraValidationError(f"[{class_name}] {detail}")
             elif 400 <= response.status_code < 500:
                 raise TesseraClientError(
-                    f"Client error: {response.status_code}",
+                    f"[{class_name}] Client error: {response.status_code}",
                     response.status_code,
                 )
             elif 500 <= response.status_code < 600:
                 raise TesseraServerError(
-                    f"Server error: {response.status_code}",
+                    f"[{class_name}] Server error: {response.status_code}",
                     response.status_code,
                 )
             else:
-                raise TesseraError(f"Unexpected status code: {response.status_code}")
+                raise TesseraError(
+                    f"[{class_name}] Unexpected status code: {response.status_code}"
+                )
 
         except requests.exceptions.RequestException as e:
-            raise TesseraError(f"Request failed: {str(e)}")
+            class_name = self.__class__.__name__
+            raise TesseraError(f"[{class_name}] Request failed: {str(e)}")

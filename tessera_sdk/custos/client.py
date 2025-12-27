@@ -10,6 +10,8 @@ from ..base.client import BaseClient
 from ..constants import HTTPMethods
 from .schemas.authorize_request import AuthorizeRequest
 from .schemas.authorize_response import AuthorizeResponse
+from .schemas.binding_request import CreateBindingRequest, DeleteBindingRequest
+from .schemas.binding_response import BindingResponse
 from .exceptions import (
     CustosError,
     CustosClientError,
@@ -130,6 +132,98 @@ class CustosClient(BaseClient):
                 HTTPMethods.POST, endpoint, data=request.model_dump()
             )
             return AuthorizeResponse(**response.json())
+        except Exception as e:
+            self._handle_custos_exceptions(e)
+            raise  # This should never be reached as _handle_custos_exceptions always raises
+
+    def create_binding(
+        self,
+        role_identifier: str,
+        user_id: str,
+        domain: str,
+    ) -> BindingResponse:
+        """
+        Create a binding for a role.
+
+        Args:
+            role_identifier: Role UUID or slug
+            user_id: User identifier to bind to the role
+            domain: Domain identifier for the binding
+
+        Returns:
+            BindingResponse object containing the created binding information
+
+        Raises:
+            CustosValidationError: If request data is invalid
+            CustosAuthenticationError: If authentication fails
+            CustosServerError: If the server encounters an error
+
+        Example:
+            >>> client = CustosClient(base_url="https://custos.example.com", api_token="your-token")
+            >>> response = client.create_binding(
+            ...     role_identifier="role-uuid-123",
+            ...     user_id="user-456",
+            ...     domain="account:1234"
+            ... )
+            >>> print(response.binding_id)
+        """
+        endpoint = f"/roles/{role_identifier}/bindings"
+
+        request = CreateBindingRequest(
+            user_id=user_id,
+            domain=domain,
+        )
+
+        try:
+            response = self._make_request(
+                HTTPMethods.POST, endpoint, data=request.model_dump()
+            )
+            return BindingResponse(**response.json())
+        except Exception as e:
+            self._handle_custos_exceptions(e)
+            raise  # This should never be reached as _handle_custos_exceptions always raises
+
+    def delete_binding(
+        self,
+        role_identifier: str,
+        user_id: str,
+        domain: str,
+    ) -> None:
+        """
+        Delete a binding for a role.
+
+        Args:
+            role_identifier: Role UUID or slug
+            user_id: User identifier to unbind from the role
+            domain: Domain identifier for the binding
+
+        Raises:
+            CustosValidationError: If request data is invalid
+            CustosAuthenticationError: If authentication fails
+            CustosNotFoundError: If the binding is not found
+            CustosServerError: If the server encounters an error
+
+        Example:
+            >>> client = CustosClient(base_url="https://custos.example.com", api_token="your-token")
+            >>> client.delete_binding(
+            ...     role_identifier="role-uuid-123",
+            ...     user_id="user-456",
+            ...     domain="account:1234"
+            ... )
+        """
+        endpoint = f"/roles/{role_identifier}/bindings"
+
+        request = DeleteBindingRequest(
+            user_id=user_id,
+            domain=domain,
+        )
+
+        try:
+            self._make_request(
+                HTTPMethods.DELETE,
+                endpoint,
+                data=request.model_dump(),
+            )
         except Exception as e:
             self._handle_custos_exceptions(e)
             raise  # This should never be reached as _handle_custos_exceptions always raises
