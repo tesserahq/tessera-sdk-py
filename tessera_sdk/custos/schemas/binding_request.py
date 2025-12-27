@@ -1,4 +1,5 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Dict, Any
 
 
 class CreateBindingRequest(BaseModel):
@@ -10,10 +11,10 @@ class CreateBindingRequest(BaseModel):
     domain: str
     """Domain identifier for the binding."""
 
-    class ConfigDict:
-        """Pydantic model configuration."""
+    domain_metadata: Dict[str, Any] = Field(default_factory=dict)
+    """Metadata for the domain."""
 
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class DeleteBindingRequest(BaseModel):
@@ -25,7 +26,4 @@ class DeleteBindingRequest(BaseModel):
     domain: str
     """Domain identifier for the binding."""
 
-    class ConfigDict:
-        """Pydantic model configuration."""
-
-        from_attributes = True
+    model_config = {"from_attributes": True}

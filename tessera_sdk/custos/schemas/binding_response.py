@@ -23,8 +23,8 @@ class BindingResponse(BaseModel):
     domain: Optional[str] = None
     """Domain identifier."""
 
-    metadata: Optional[Dict[str, Any]] = None
-    """Optional metadata."""
+    domain_metadata: Optional[Dict[str, Any]] = None
+    """Metadata for the domain."""
 
     created_at: Optional[str] = None
     """Timestamp when the binding was created."""
