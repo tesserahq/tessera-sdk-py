@@ -141,6 +141,7 @@ class CustosClient(BaseClient):
         role_identifier: str,
         user_id: str,
         domain: str,
+        domain_metadata: Optional[dict] = None,
     ) -> BindingResponse:
         """
         Create a binding for a role.
@@ -172,6 +173,7 @@ class CustosClient(BaseClient):
         request = CreateBindingRequest(
             user_id=user_id,
             domain=domain,
+            domain_metadata=domain_metadata or {},
         )
 
         try:
