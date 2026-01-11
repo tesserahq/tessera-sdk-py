@@ -2,11 +2,11 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Any
 
 
-class BindingResponse(BaseModel):
-    """Schema for binding response."""
+class MembershipResponse(BaseModel):
+    """Schema for membership response."""
 
-    binding_id: Optional[str] = None
-    """Binding identifier."""
+    membership_id: Optional[str] = None
+    """Membership identifier."""
 
     role_id: Optional[str] = None
     """Role identifier."""
@@ -27,6 +27,6 @@ class BindingResponse(BaseModel):
     """Metadata for the domain."""
 
     created_at: Optional[str] = None
-    """Timestamp when the binding was created."""
+    """Timestamp when the membership was created."""
 
     model_config = {"from_attributes": True}

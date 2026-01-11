@@ -4,13 +4,13 @@ Schemas for the Custos client.
 
 from .authorize_request import AuthorizeRequest
 from .authorize_response import AuthorizeResponse
-from .binding_request import CreateBindingRequest, DeleteBindingRequest
-from .binding_response import BindingResponse
+from .membership_request import CreateMembershipRequest, DeleteMembershipRequest
+from .membership_response import MembershipResponse
 
 __all__ = [
     "AuthorizeRequest",
     "AuthorizeResponse",
-    "CreateBindingRequest",
-    "DeleteBindingRequest",
-    "BindingResponse",
+    "CreateMembershipRequest",
+    "DeleteMembershipRequest",
+    "MembershipResponse",
 ]

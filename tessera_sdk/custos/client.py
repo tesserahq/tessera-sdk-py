@@ -10,8 +10,8 @@ from ..base.client import BaseClient
 from ..constants import HTTPMethods
 from .schemas.authorize_request import AuthorizeRequest
 from .schemas.authorize_response import AuthorizeResponse
-from .schemas.binding_request import CreateBindingRequest, DeleteBindingRequest
-from .schemas.binding_response import BindingResponse
+from .schemas.membership_request import CreateMembershipRequest, DeleteMembershipRequest
+from .schemas.membership_response import MembershipResponse
 from .exceptions import (
     CustosError,
     CustosClientError,
@@ -136,23 +136,23 @@ class CustosClient(BaseClient):
             self._handle_custos_exceptions(e)
             raise  # This should never be reached as _handle_custos_exceptions always raises
 
-    def create_binding(
+    def create_membership(
         self,
         role_identifier: str,
         user_id: str,
         domain: str,
         domain_metadata: Optional[dict] = None,
-    ) -> BindingResponse:
+    ) -> MembershipResponse:
         """
-        Create a binding for a role.
+        Create a membership for a role.
 
         Args:
             role_identifier: Role UUID or slug
-            user_id: User identifier to bind to the role
-            domain: Domain identifier for the binding
+            user_id: User identifier to add to the role
+            domain: Domain identifier for the membership
 
         Returns:
-            BindingResponse object containing the created binding information
+            MembershipResponse object containing the created membership information
 
         Raises:
             CustosValidationError: If request data is invalid
@@ -161,16 +161,16 @@ class CustosClient(BaseClient):
 
         Example:
             >>> client = CustosClient(base_url="https://custos.example.com", api_token="your-token")
-            >>> response = client.create_binding(
+            >>> response = client.create_membership(
             ...     role_identifier="role-uuid-123",
             ...     user_id="user-456",
             ...     domain="account:1234"
             ... )
-            >>> print(response.binding_id)
+            >>> print(response.membership_id)
         """
-        endpoint = f"/roles/{role_identifier}/bindings"
+        endpoint = f"/roles/{role_identifier}/memberships"
 
-        request = CreateBindingRequest(
+        request = CreateMembershipRequest(
             user_id=user_id,
             domain=domain,
             domain_metadata=domain_metadata or {},
@@ -180,42 +180,42 @@ class CustosClient(BaseClient):
             response = self._make_request(
                 HTTPMethods.POST, endpoint, data=request.model_dump()
             )
-            return BindingResponse(**response.json())
+            return MembershipResponse(**response.json())
         except Exception as e:
             self._handle_custos_exceptions(e)
             raise  # This should never be reached as _handle_custos_exceptions always raises
 
-    def delete_binding(
+    def delete_membership(
         self,
         role_identifier: str,
         user_id: str,
         domain: str,
     ) -> None:
         """
-        Delete a binding for a role.
+        Delete a membership for a role.
 
         Args:
             role_identifier: Role UUID or slug
-            user_id: User identifier to unbind from the role
-            domain: Domain identifier for the binding
+            user_id: User identifier to remove from the role
+            domain: Domain identifier for the membership
 
         Raises:
             CustosValidationError: If request data is invalid
             CustosAuthenticationError: If authentication fails
-            CustosNotFoundError: If the binding is not found
+            CustosNotFoundError: If the membership is not found
             CustosServerError: If the server encounters an error
 
         Example:
             >>> client = CustosClient(base_url="https://custos.example.com", api_token="your-token")
-            >>> client.delete_binding(
+            >>> client.delete_membership(
             ...     role_identifier="role-uuid-123",
             ...     user_id="user-456",
             ...     domain="account:1234"
             ... )
         """
-        endpoint = f"/roles/{role_identifier}/bindings"
+        endpoint = f"/roles/{role_identifier}/memberships"
 
-        request = DeleteBindingRequest(
+        request = DeleteMembershipRequest(
             user_id=user_id,
             domain=domain,
         )
