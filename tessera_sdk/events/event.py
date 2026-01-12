@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Dict, Optional, Union, List
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from tessera_sdk.config import get_settings
 
@@ -59,6 +59,10 @@ class Event(BaseModel):
     tags: Optional[List[str]] = Field(
         default=None,
         description="Tags associated with the event (extension attribute)",
+    )
+    project_id: Optional[UUID] = Field(
+        default=None,
+        description="Project UUID associated with the event (extension attribute)",
     )
 
     @field_validator("source")
