@@ -123,7 +123,7 @@ def event_type(type: str) -> str:
     return f"{settings.event_type_prefix}.{type}"
 
 
-def event_source(source: str) -> str:
+def event_source(source: str = "") -> str:
     """Get the event source."""
     settings = get_settings()
-    return f"{settings.event_source_prefix}{source}"
+    return f"/{settings.event_source_prefix}{source}"
