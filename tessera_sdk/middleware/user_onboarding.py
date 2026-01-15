@@ -40,7 +40,7 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
         else:
             self.identies_client = None
 
-        logger.info(
+        logger.debug(
             f"UserOnboardingMiddleware initialized with Identies base URL: {self.identies_base_url}"
         )
 
