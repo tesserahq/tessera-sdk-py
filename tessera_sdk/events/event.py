@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional, Union, List
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from uuid import UUID, uuid4
-
+from typing import Optional
 from tessera_sdk.config import get_settings
 
 
@@ -123,7 +123,7 @@ def event_type(type: str) -> str:
     return f"{settings.event_type_prefix}.{type}"
 
 
-def event_source(source: str = "") -> str:
+def event_source(source: Optional[str] = "") -> str:
     """Get the event source."""
     settings = get_settings()
     return f"/{settings.event_source_prefix}{source}"
