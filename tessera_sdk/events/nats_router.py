@@ -13,10 +13,12 @@ from faststream.nats.fastapi import NatsRouter  # type: ignore[import]
 from tessera_sdk.config import get_settings
 from tessera_sdk.events.event import Event
 
+from opentelemetry.instrumentation.faststream.middlewares import NatsOtelMiddleware
+
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-nats_router = NatsRouter(settings.nats_url)
+nats_router = NatsRouter(settings.nats_url, middlewares=[NatsOtelMiddleware])
 
 
 class NatsEventPublisher:
