@@ -1162,28 +1162,6 @@ packaging = ">=18.0"
 wrapt = ">=1.0.0,<2.0.0"
 
 [[package]]
-name = "opentelemetry-instrumentation-faststream"
-version = "0.1.3"
-description = "FastStream instrumentation for OpenTelemetry"
-optional = false
-python-versions = ">=3.11"
-groups = ["main"]
-files = [
-    {file = "opentelemetry_instrumentation_faststream-0.1.3-py3-none-any.whl", hash = "sha256:bfeea723453e6553873962744a9d74c636eb590b030573844ca6b1be4fa0938a"},
-    {file = "opentelemetry_instrumentation_faststream-0.1.3.tar.gz", hash = "sha256:cb56d3ab3d39977a9ee43be48e24c67ee7e3db102295dd20221116bb45ae1538"},
-]
-
-[package.dependencies]
-opentelemetry-api = ">=1.5,<2.0"
-opentelemetry-instrumentation = ">=0.44b0,<1.0"
-wrapt = ">=1.0.0,<2.0.0"
-
-[package.extras]
-instruments = ["faststream[redis] (>=0.5.2,<0.6.0)"]
-quality = ["mypy (>=1.8.0,<1.9.0)", "pre-commit (>=3.6.0,<3.7.0)", "ruff (>=0.3.0,<0.4.0)"]
-tests = ["aio-pika", "aiokafka", "faststream[kafka,nats,rabbit,redis] (>=0.5.2,<0.6.0)", "nats-py", "opentelemetry-test-utils (>=0.45b0,<1.0)", "pytest (>=8.0.0,<8.1.0)", "pytest-asyncio (==0.23.6)", "pytest-cov (>=4.1,<5.0)", "redis", "wrapt (>=1.0.0,<2.0.0)"]
-
-[[package]]
 name = "opentelemetry-instrumentation-sqlalchemy"
 version = "0.60b1"
 description = "OpenTelemetry SQLAlchemy instrumentation"
@@ -1954,4 +1932,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11"
-content-hash = "1c86ab0b04e724d9928869a03f80f50aa4004abebd8c29b886eccc83849eddd1"
+content-hash = "fe944f6fdf858a4423b3cb0fc3a12df3bbb27cbff14d00efed3cceafa3ec19fc"
