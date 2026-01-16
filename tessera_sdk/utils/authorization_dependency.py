@@ -234,11 +234,9 @@ def authorize(
                     )
                 return True
 
-        logger.info(
+        logger.debug(
             f"Calling Custos API to authorize user {user_id} for action {action} on resource {resource} in domain {domain}"
         )
-        logger.info(f"Custos API URL: {custos_api_url}")
-        print(f"Custos API URL: {custos_api_url}")
 
         # Create Custos client with authentication token
         custos_client = CustosClient(base_url=custos_api_url, api_token=auth_token)
