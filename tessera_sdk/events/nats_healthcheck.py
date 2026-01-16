@@ -8,7 +8,7 @@ import asyncio
 import json
 import logging
 import uuid
-from typing import Optional
+from typing import Any, Optional
 
 from nats.aio.client import Client as NatsClient  # type: ignore[import]
 from faststream.exceptions import IncorrectState  # type: ignore[import]
@@ -55,7 +55,7 @@ class NatsHealthcheck:
         if not self._enabled:
             self._logger.warning("NATS healthcheck is DISABLED by configuration")
 
-    async def check(self) -> dict[str, bool | str | list[dict[str, str | None]]]:
+    async def check(self) -> dict[str, Any]:
         """
         Perform a health check by connecting, sending a test message, and validating receipt.
 
@@ -63,12 +63,23 @@ class NatsHealthcheck:
             A dictionary with the following structure:
             - "status" (bool): True if the health check passes, False otherwise
             - "error" (str, optional): Overall error message describing what went wrong (only present when status is False)
+            - "settings" (dict): NATS-related configuration settings:
+                - "nats_enabled" (bool): Whether NATS is enabled
+                - "nats_url" (str): NATS server URL
+                - "timeout" (float): Healthcheck timeout in seconds
             - "steps" (list): List of step dictionaries, each with:
                 - "step" (str): Name of the step
                 - "status" (str): "success" or "failed"
                 - "error" (str, optional): Error message for failed steps
         """
         steps: list[HealthcheckStep] = []
+
+        # Collect NATS settings
+        settings_info = {
+            "nats_enabled": self._enabled,
+            "nats_url": settings.nats_url,
+            "timeout": self._timeout,
+        }
 
         # Step 0: Check if NATS is enabled
         if not self._enabled:
@@ -78,6 +89,7 @@ class NatsHealthcheck:
             return {
                 "status": False,
                 "error": error_msg,
+                "settings": settings_info,
                 "steps": [step.to_dict() for step in steps],
             }
         steps.append(HealthcheckStep("Check NATS enabled", "success"))
@@ -202,6 +214,7 @@ class NatsHealthcheck:
                     return {
                         "status": False,
                         "error": overall_error,
+                        "settings": settings_info,
                         "steps": [step.to_dict() for step in steps],
                     }
 
@@ -222,6 +235,7 @@ class NatsHealthcheck:
                     return {
                         "status": False,
                         "error": overall_error,
+                        "settings": settings_info,
                         "steps": [step.to_dict() for step in steps],
                     }
 
@@ -240,6 +254,7 @@ class NatsHealthcheck:
                     return {
                         "status": False,
                         "error": overall_error,
+                        "settings": settings_info,
                         "steps": [step.to_dict() for step in steps],
                     }
                 steps.append(HealthcheckStep("Validate message structure", "success"))
@@ -258,6 +273,7 @@ class NatsHealthcheck:
                     return {
                         "status": False,
                         "error": overall_error,
+                        "settings": settings_info,
                         "steps": [step.to_dict() for step in steps],
                     }
                 steps.append(HealthcheckStep("Validate message ID", "success"))
@@ -267,6 +283,7 @@ class NatsHealthcheck:
                 )
                 return {
                     "status": True,
+                    "settings": settings_info,
                     "steps": [step.to_dict() for step in steps],
                 }
 
@@ -308,6 +325,7 @@ class NatsHealthcheck:
             return {
                 "status": False,
                 "error": overall_error,
+                "settings": settings_info,
                 "steps": [step.to_dict() for step in steps],
             }
         except asyncio.TimeoutError as e:
@@ -330,6 +348,7 @@ class NatsHealthcheck:
             return {
                 "status": False,
                 "error": overall_error,
+                "settings": settings_info,
                 "steps": [step.to_dict() for step in steps],
             }
         except Exception as e:
@@ -342,6 +361,7 @@ class NatsHealthcheck:
             return {
                 "status": False,
                 "error": overall_error,
+                "settings": settings_info,
                 "steps": [step.to_dict() for step in steps],
             }
         finally:
