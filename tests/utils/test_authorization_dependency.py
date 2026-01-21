@@ -4,12 +4,12 @@ from unittest.mock import Mock, patch
 import pytest
 from fastapi import HTTPException
 
-from tessera_sdk.custos.exceptions import (
-    CustosAuthenticationError,
-    CustosClientError,
-    CustosError,
-    CustosServerError,
-    CustosValidationError,
+from tessera_sdk.base.exceptions import (
+    TesseraAuthenticationError,
+    TesseraValidationError,
+    TesseraClientError,
+    TesseraServerError,
+    TesseraError,
 )
 from tessera_sdk.utils import authorization_dependency
 from tessera_sdk.utils.authorization_dependency import authorize
@@ -28,18 +28,25 @@ def _make_request(user=None, headers=None):
 
 @pytest.mark.anyio
 async def test_authorize_requires_auth_header():
-    dependency = authorize("read", "resource", lambda _request: "domain")
+    async def resolve_domain(_request):
+        return "domain"
+
+    dependency = authorize("read", "resource", resolve_domain)
     request = _make_request(user=SimpleNamespace(id="user-1"))
 
     with pytest.raises(HTTPException) as exc:
         await dependency(request)
 
+    print(exc.value)
     assert exc.value.status_code == 401
 
 
 @pytest.mark.anyio
 async def test_authorize_requires_user():
-    dependency = authorize("read", "resource", lambda _request: "domain")
+    async def resolve_domain(_request):
+        return "domain"
+
+    dependency = authorize("read", "resource", resolve_domain)
     request = _make_request(headers={"Authorization": "Bearer token"})
 
     with pytest.raises(HTTPException) as exc:
@@ -260,11 +267,11 @@ async def test_authorize_allowed_writes_cache():
 @pytest.mark.parametrize(
     "error, status_code",
     [
-        (CustosAuthenticationError("nope"), 401),
-        (CustosValidationError("bad"), 400),
-        (CustosClientError("down", 500), 503),
-        (CustosServerError("down", 500), 503),
-        (CustosError("boom"), 500),
+        (TesseraAuthenticationError("nope"), 401),
+        (TesseraValidationError("bad"), 400),
+        (TesseraClientError("down", 500), 503),
+        (TesseraServerError("down", 500), 503),
+        (TesseraError("boom"), 500),
     ],
 )
 async def test_authorize_maps_custos_errors(error, status_code):

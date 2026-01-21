@@ -16,7 +16,4 @@ class AuthorizeRequest(BaseModel):
     domain: str
     """Domain identifier (e.g., 'account:1234')."""
 
-    class ConfigDict:
-        """Pydantic model configuration."""
-
-        from_attributes = True
+    model_config = {"from_attributes": True}

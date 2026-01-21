@@ -10,12 +10,13 @@ from starlette.responses import JSONResponse
 from ..utils.auth import verify_token_dependency
 from ..core.database_manager import DatabaseManager
 from ..identies import IdentiesClient
-from ..identies.exceptions import (
-    IdentiesError,
-    IdentiesAuthenticationError,
-    IdentiesValidationError,
-    IdentiesClientError,
-    IdentiesServerError,
+from ..config import get_settings
+from ..base.exceptions import (
+    TesseraError,
+    TesseraAuthenticationError,
+    TesseraValidationError,
+    TesseraClientError,
+    TesseraServerError,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,10 +28,10 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         app,
         identies_base_url: Optional[str] = None,
         skip_paths: Optional[List[str]] = None,
-        # database_manager: Optional[DatabaseManager] = None,
         user_service_factory=None,
     ):
         super().__init__(app)
+        settings = get_settings()
         self.user_service_factory = user_service_factory
         # Get Identies base URL from parameter or environment variable
         self.identies_base_url = identies_base_url or os.getenv("IDENTIES_BASE_URL")
@@ -52,8 +53,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         # Initialize the Identies client
         self.identies_client = IdentiesClient(
             base_url=self.identies_base_url,
-            timeout=10,  # Shorter timeout for middleware
-            max_retries=1,  # Fewer retries for middleware
+            timeout=int(settings.tesserasdk_auth_middleware_timeout),
         )
         logger.info(
             f"AuthenticationMiddleware initialized with Identies base URL: {self.identies_base_url}"
@@ -100,23 +100,23 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                     status_code=401, content={"error": "Invalid or inactive API key"}
                 )
 
-        except IdentiesAuthenticationError:
+        except TesseraAuthenticationError:
             logger.warning("X-API-Key authentication failed")
             return JSONResponse(status_code=401, content={"error": "Invalid API key"})
-        except IdentiesValidationError as e:
+        except TesseraValidationError as e:
             logger.warning(f"X-API-Key validation error: {e}")
             return JSONResponse(
                 status_code=400,
                 content={"error": f"API key validation error: {str(e)}"},
             )
-        except (IdentiesClientError, IdentiesServerError) as e:
+        except (TesseraClientError, TesseraServerError) as e:
             logger.error(f"Identies client error during API key validation: {e}")
             return JSONResponse(
                 status_code=503,
                 content={"error": "Authentication service temporarily unavailable"},
             )
-        except IdentiesError as e:
-            logger.error(f"Unexpected Identies error during API key validation: {e}")
+        except TesseraError as e:
+            logger.error(f"Unexpected error during API key validation: {e}")
             return JSONResponse(
                 status_code=500, content={"error": "Internal authentication error"}
             )
@@ -148,8 +148,6 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             )
 
         token = authorization[len("Bearer ") :]
-
-        # db = self.database_manager.create_session()
 
         try:
             # Now manually pass the raw token with database manager

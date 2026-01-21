@@ -12,14 +12,6 @@ from .schemas.authorize_request import AuthorizeRequest
 from .schemas.authorize_response import AuthorizeResponse
 from .schemas.membership_request import CreateMembershipRequest, DeleteMembershipRequest
 from .schemas.membership_response import MembershipResponse
-from .exceptions import (
-    CustosError,
-    CustosClientError,
-    CustosServerError,
-    CustosAuthenticationError,
-    CustosNotFoundError,
-    CustosValidationError,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +27,7 @@ class CustosClient(BaseClient):
         self,
         base_url: str,
         api_token: Optional[str] = None,
-        timeout: int = 30,
-        max_retries: int = 3,
+        timeout: Optional[int] = None,
         session: Optional[requests.Session] = None,
     ):
         """
@@ -46,43 +37,15 @@ class CustosClient(BaseClient):
             base_url: The base URL of the Custos API (e.g., "https://custos-api.yourdomain.com")
             api_token: Optional API token for authentication
             timeout: Request timeout in seconds
-            max_retries: Maximum number of retries for failed requests
             session: Optional requests.Session instance to use
         """
         super().__init__(
             base_url=base_url,
             api_token=api_token,
             timeout=timeout,
-            max_retries=max_retries,
             session=session,
             service_name="custos",
         )
-
-    def _handle_custos_exceptions(self, e: Exception):
-        """Convert base exceptions to Custos-specific exceptions."""
-        from ..base.exceptions import (
-            TesseraAuthenticationError,
-            TesseraNotFoundError,
-            TesseraValidationError,
-            TesseraClientError,
-            TesseraServerError,
-            TesseraError,
-        )
-
-        if isinstance(e, TesseraAuthenticationError):
-            raise CustosAuthenticationError(str(e), e.status_code)
-        elif isinstance(e, TesseraNotFoundError):
-            raise CustosNotFoundError(str(e), e.status_code)
-        elif isinstance(e, TesseraValidationError):
-            raise CustosValidationError(str(e), e.status_code)
-        elif isinstance(e, TesseraClientError):
-            raise CustosClientError(str(e), e.status_code)
-        elif isinstance(e, TesseraServerError):
-            raise CustosServerError(str(e), e.status_code)
-        elif isinstance(e, TesseraError):
-            raise CustosError(str(e), e.status_code)
-        else:
-            raise e
 
     def authorize(
         self,
@@ -127,14 +90,10 @@ class CustosClient(BaseClient):
             domain=domain,
         )
 
-        try:
-            response = self._make_request(
-                HTTPMethods.POST, endpoint, data=request.model_dump()
-            )
-            return AuthorizeResponse(**response.json())
-        except Exception as e:
-            self._handle_custos_exceptions(e)
-            raise  # This should never be reached as _handle_custos_exceptions always raises
+        response = self._make_request(
+            HTTPMethods.POST, endpoint, data=request.model_dump()
+        )
+        return AuthorizeResponse(**response.json())
 
     def create_membership(
         self,
@@ -176,14 +135,10 @@ class CustosClient(BaseClient):
             domain_metadata=domain_metadata or {},
         )
 
-        try:
-            response = self._make_request(
-                HTTPMethods.POST, endpoint, data=request.model_dump()
-            )
-            return MembershipResponse(**response.json())
-        except Exception as e:
-            self._handle_custos_exceptions(e)
-            raise  # This should never be reached as _handle_custos_exceptions always raises
+        response = self._make_request(
+            HTTPMethods.POST, endpoint, data=request.model_dump()
+        )
+        return MembershipResponse(**response.json())
 
     def delete_membership(
         self,
@@ -220,12 +175,8 @@ class CustosClient(BaseClient):
             domain=domain,
         )
 
-        try:
-            self._make_request(
-                HTTPMethods.DELETE,
-                endpoint,
-                data=request.model_dump(),
-            )
-        except Exception as e:
-            self._handle_custos_exceptions(e)
-            raise  # This should never be reached as _handle_custos_exceptions always raises
+        self._make_request(
+            HTTPMethods.DELETE,
+            endpoint,
+            data=request.model_dump(),
+        )

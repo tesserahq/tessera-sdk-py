@@ -10,14 +10,6 @@ from ..base.client import BaseClient
 from ..constants import HTTPMethods
 from .schemas.introspect_response import IntrospectResponse
 from .schemas.user_response import UserResponse
-from .exceptions import (
-    IdentiesError,
-    IdentiesClientError,
-    IdentiesServerError,
-    IdentiesAuthenticationError,
-    IdentiesNotFoundError,
-    IdentiesValidationError,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +25,7 @@ class IdentiesClient(BaseClient):
         self,
         base_url: str,
         api_token: Optional[str] = None,
-        timeout: int = 30,
-        max_retries: int = 3,
+        timeout: Optional[int] = None,
         session: Optional[requests.Session] = None,
     ):
         """
@@ -44,43 +35,15 @@ class IdentiesClient(BaseClient):
             base_url: The base URL of the Identies API (e.g., "https://identies-api.yourdomain.com")
             api_token: Optional API token for authentication
             timeout: Request timeout in seconds
-            max_retries: Maximum number of retries for failed requests
             session: Optional requests.Session instance to use
         """
         super().__init__(
             base_url=base_url,
             api_token=api_token,
             timeout=timeout,
-            max_retries=max_retries,
             session=session,
             service_name="identies",
         )
-
-    def _handle_identies_exceptions(self, e: Exception):
-        """Convert base exceptions to Identies-specific exceptions."""
-        from ..base.exceptions import (
-            TesseraAuthenticationError,
-            TesseraNotFoundError,
-            TesseraValidationError,
-            TesseraClientError,
-            TesseraServerError,
-            TesseraError,
-        )
-
-        if isinstance(e, TesseraAuthenticationError):
-            raise IdentiesAuthenticationError(str(e), e.status_code)
-        elif isinstance(e, TesseraNotFoundError):
-            raise IdentiesNotFoundError(str(e), e.status_code)
-        elif isinstance(e, TesseraValidationError):
-            raise IdentiesValidationError(str(e), e.status_code)
-        elif isinstance(e, TesseraClientError):
-            raise IdentiesClientError(str(e), e.status_code)
-        elif isinstance(e, TesseraServerError):
-            raise IdentiesServerError(str(e), e.status_code)
-        elif isinstance(e, TesseraError):
-            raise IdentiesError(str(e), e.status_code)
-        else:
-            raise e
 
     # User Management Methods
 
@@ -94,11 +57,8 @@ class IdentiesClient(BaseClient):
         Returns:
             UserInfo object
         """
-        try:
-            response = self._make_request(HTTPMethods.GET, "/userinfo")
-            return UserResponse(**response.json())
-        except Exception as e:
-            self._handle_identies_exceptions(e)
+        response = self._make_request(HTTPMethods.GET, "/userinfo")
+        return UserResponse(**response.json())
 
     def get_user(self, user_id: Optional[str] = None) -> UserResponse:
         """
@@ -114,12 +74,26 @@ class IdentiesClient(BaseClient):
         Raises:
             IdentiesNotFoundError: If client is not found
         """
-        try:
-            endpoint = f"/users/{user_id}" if user_id else "/user"
-            response = self._make_request(HTTPMethods.GET, endpoint)
-            return UserResponse(**response.json())
-        except Exception as e:
-            self._handle_identies_exceptions(e)
+        endpoint = f"/users/{user_id}" if user_id else "/user"
+        response = self._make_request(HTTPMethods.GET, endpoint)
+        return UserResponse(**response.json())
+
+    def get_internal_user(self, user_id: str) -> UserResponse:
+        """
+        Get an internal user.
+
+        Args:
+            user_id: ID of the user to retrieve.
+
+        Returns:
+            UserResponse object
+
+        Raises:
+            IdentiesNotFoundError: If client is not found
+        """
+        endpoint = f"/internal/users/{user_id}"
+        response = self._make_request(HTTPMethods.GET, endpoint)
+        return UserResponse(**response.json())
 
     def introspect(self) -> IntrospectResponse:
         """
@@ -134,8 +108,5 @@ class IdentiesClient(BaseClient):
         Raises:
             IdentiesNotFoundError: If client is not found
         """
-        try:
-            response = self._make_request(HTTPMethods.POST, "/api-keys/introspect")
-            return IntrospectResponse(**response.json())
-        except Exception as e:
-            self._handle_identies_exceptions(e)
+        response = self._make_request(HTTPMethods.POST, "/api-keys/introspect")
+        return IntrospectResponse(**response.json())

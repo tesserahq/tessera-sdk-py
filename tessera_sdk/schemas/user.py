@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from uuid import UUID
+from datetime import datetime
 
 
 class UserNeedsOnboarding(BaseModel):
@@ -33,6 +34,15 @@ class UserOnboard(BaseModel):
 
     avatar_url: Optional[str] = None
     """URL to the user's avatar image."""
+
+    verified: bool = False
+    """Whether the user is verified."""
+
+    verified_at: Optional[datetime] = None
+    """Timestamp when the user was verified."""
+
+    service_account: Optional[bool] = None
+    """Whether the user is a service account."""
 
 
 class UserServiceInterface:

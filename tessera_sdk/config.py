@@ -41,6 +41,24 @@ class Settings(BaseSettings):
         json_schema_extra={"env": "IDENTIES_HOST"},
     )
 
+    # Tessera SDK (namespaced) settings
+    tesserasdk_base_client_timeout: int = Field(
+        default=3,
+        validation_alias=AliasChoices(
+            "TESSERA_BASE_CLIENT_TIMEOUT",
+            "TESSERASDK_BASE_CLIENT_TIMEOUT",
+            "tesserasdk.base_client.timeout",
+        ),
+    )
+
+    tesserasdk_auth_middleware_timeout: int = Field(
+        default=3,
+        validation_alias=AliasChoices(
+            "TESSERASDK_AUTH_MIDDLEWARE_TIMEOUT",
+            "tesserasdk.auth_middleware.timeout",
+        ),
+    )
+
     oidc_domain: str = "test.oidc.com"
     oidc_api_audience: str = "https://test-api"
     oidc_issuer: str = "https://test.oidc.com/"

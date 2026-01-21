@@ -4,12 +4,12 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
 from ..identies import IdentiesClient
-from ..identies.exceptions import (
-    IdentiesError,
-    IdentiesAuthenticationError,
-    IdentiesValidationError,
-    IdentiesClientError,
-    IdentiesServerError,
+from ..base.exceptions import (
+    TesseraError,
+    TesseraAuthenticationError,
+    TesseraValidationError,
+    TesseraClientError,
+    TesseraServerError,
 )
 from ..schemas.user import UserOnboard, UserNeedsOnboarding
 
@@ -23,20 +23,23 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
     """
 
     def __init__(
-        self, app, identies_base_url: Optional[str] = None, user_service_factory=None
+        self,
+        app,
+        identies_base_url: Optional[str] = None,
+        user_service_factory=None,
+        skip_onboarding_paths: Optional[List[str]] = None,
     ):
         super().__init__(app)
         self.identies_base_url = identies_base_url
         self.user_service_factory = user_service_factory
+        self.skip_onboarding_paths = (
+            skip_onboarding_paths if skip_onboarding_paths is not None else []
+        )
 
         # Initialize Identies client if base URL is provided
         self.identies_client: Optional[IdentiesClient]
         if self.identies_base_url:
-            self.identies_client = IdentiesClient(
-                base_url=self.identies_base_url,
-                timeout=10,  # Shorter timeout for middleware
-                max_retries=1,  # Fewer retries for middleware
-            )
+            self.identies_client = IdentiesClient(base_url=self.identies_base_url)
         else:
             self.identies_client = None
 
@@ -49,7 +52,17 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
         Process the request and handle user onboarding if needed.
         Only processes requests that have a user set in request.state.
         """
+        print(f"UserOnboardingMiddleware dispatch called for path: {request.url.path}")
+        print(f"Skip onboarding paths: {self.skip_onboarding_paths}")
 
+        # Allow callers to explicitly skip onboarding on certain paths
+        for skip_path in self.skip_onboarding_paths:
+            if request.url.path.startswith(skip_path):
+                return await call_next(request)
+
+        print(
+            f"User is set in request state: {hasattr(request.state, 'user') and request.state.user is not None}"
+        )
         # Check if user is already set in request state
         if not hasattr(request.state, "user") or request.state.user is None:
             # No user set, skip onboarding
@@ -139,6 +152,8 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
                 userinfo_response, external_id
             )
 
+            logger.info(f"User data: {user_data}")
+
             # Create UserService instance using the factory
             user_service = self.user_service_factory()
 
@@ -174,6 +189,7 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
             try:
                 # Fetch complete user info from Identies using the client
                 userinfo_response = self.identies_client.userinfo()
+                logger.info(f"Userinfo response: {userinfo_response}")
                 return userinfo_response
 
             finally:
@@ -181,17 +197,17 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
                 if "Authorization" in self.identies_client.session.headers:
                     del self.identies_client.session.headers["Authorization"]
 
-        except IdentiesAuthenticationError:
+        except TesseraAuthenticationError:
             logger.warning("Identies authentication failed during user onboarding")
             return None
-        except IdentiesValidationError as e:
+        except TesseraValidationError as e:
             logger.warning(f"Identies validation error during user onboarding: {e}")
             return None
-        except (IdentiesClientError, IdentiesServerError) as e:
+        except (TesseraClientError, TesseraServerError) as e:
             logger.error(f"Identies client error during user onboarding: {e}")
             return None
-        except IdentiesError as e:
-            logger.error(f"Unexpected Identies error during user onboarding: {e}")
+        except TesseraError as e:
+            logger.error(f"Unexpected error during user onboarding: {e}")
             return None
         except Exception as e:
             logger.error(f"Unexpected error during Identies onboarding: {e}")
@@ -223,6 +239,8 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
                 "username": "username",
                 "provider": "provider",
                 "verified": "verified",
+                "verified_at": "verified_at",
+                "service_account": "service_account",
                 "theme_preference": "theme_preference",
             }
 
@@ -247,6 +265,11 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
             first_name=userinfo_response.first_name,
             last_name=userinfo_response.last_name,
             avatar_url=userinfo_response.avatar_url,
+            provider=userinfo_response.provider,
+            verified=userinfo_response.verified,
+            verified_at=userinfo_response.verified_at,
+            service_account=userinfo_response.service_account,
+            theme_preference=userinfo_response.theme_preference,
         )
 
     def _extract_user_data_for_onboarding(self, user: Any) -> Dict[str, Any]:
@@ -261,6 +284,11 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
             "first_name": getattr(user, "first_name", ""),
             "last_name": getattr(user, "last_name", ""),
             "avatar_url": getattr(user, "avatar_url", None),
+            "provider": getattr(user, "provider", None),
+            "verified": getattr(user, "verified", False),
+            "verified_at": getattr(user, "verified_at", None),
+            "service_account": getattr(user, "service_account", None),
+            "theme_preference": getattr(user, "theme_preference", "system"),
         }
 
     def _update_user_with_info(self, user: Any, userinfo: Dict[str, Any]) -> Any:

@@ -17,15 +17,14 @@ All clients share a common base architecture for consistency and maintainability
 ### Base Client
 
 All clients inherit from `BaseClient` which provides:
-- HTTP session management with retry logic
+- HTTP session management
 - Common authentication handling
 - Standardized error handling
-- Configurable timeouts and retry strategies
+- Configurable timeouts
 
 ### Shared Features
 
 - **Authentication**: Bearer token authentication
-- **Retry Logic**: Automatic retries for transient failures (429, 5xx status codes)
 - **Error Handling**: Standardized exception hierarchy
 - **Session Management**: Persistent HTTP sessions with connection pooling
 
@@ -196,7 +195,6 @@ All clients support these initialization parameters:
 - `base_url: str` - API base URL
 - `api_token: str` - Authentication token (optional)
 - `timeout: int` - Request timeout in seconds (default: 30)
-- `max_retries: int` - Maximum retry attempts (default: 3)
 - `session: requests.Session` - Custom session instance (optional)
 
 ### Example with Custom Configuration
@@ -213,7 +211,6 @@ client = QuoreClient(
     base_url="http://localhost:8005",
     api_token="your-token",
     timeout=60,
-    max_retries=5,
     session=session
 )
 ```

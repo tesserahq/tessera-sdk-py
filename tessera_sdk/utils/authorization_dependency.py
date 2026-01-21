@@ -3,14 +3,14 @@ from typing import Callable, Awaitable, Optional
 from fastapi import Request, HTTPException, status
 
 from ..config import get_settings
-from ..custos import CustosClient
-from ..custos.exceptions import (
-    CustosError,
-    CustosClientError,
-    CustosServerError,
-    CustosAuthenticationError,
-    CustosValidationError,
+from ..base.exceptions import (
+    TesseraAuthenticationError,
+    TesseraValidationError,
+    TesseraClientError,
+    TesseraServerError,
+    TesseraError,
 )
+from ..custos import CustosClient
 from ..utils.cache import Cache
 
 logger = logging.getLogger(__name__)
@@ -173,8 +173,6 @@ def authorize(
             5. Cache the result (if caching is enabled)
             6. Raise HTTPException(403) if authorization is denied
         """
-        # Extract authentication token from request headers
-        auth_token = _extract_auth_token(request)
 
         # Get user from request state (set by authentication middleware)
         if not hasattr(request.state, "user") or request.state.user is None:
@@ -237,6 +235,8 @@ def authorize(
         logger.debug(
             f"Calling Custos API to authorize user {user_id} for action {action} on resource {resource} in domain {domain}"
         )
+        # Extract authentication token from request headers
+        auth_token = _extract_auth_token(request)
 
         # Create Custos client with authentication token
         custos_client = CustosClient(base_url=custos_api_url, api_token=auth_token)
@@ -272,26 +272,26 @@ def authorize(
                     ttl=settings.authorization_cache_ttl,
                 )
 
-        except CustosAuthenticationError as e:
+        except TesseraAuthenticationError as e:
             logger.warning(f"Custos authentication error: {e}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authentication failed",
             )
-        except CustosValidationError as e:
+        except TesseraValidationError as e:
             logger.warning(f"Custos validation error: {e}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Validation error: {str(e)}",
             )
-        except (CustosClientError, CustosServerError) as e:
+        except (TesseraClientError, TesseraServerError) as e:
             logger.error(f"Custos service error: {e}")
             print(f"Custos service error: {e}")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Authorization service unavailable",
             )
-        except CustosError as e:
+        except TesseraError as e:
             logger.error(f"Custos error: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

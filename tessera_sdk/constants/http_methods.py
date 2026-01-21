@@ -14,5 +14,5 @@ class HTTPMethods:
     HEAD = "HEAD"
     OPTIONS = "OPTIONS"
 
-    # HTTP method list for retry configuration
+    # Common method list (useful for validation / allowlists)
     ALL_METHODS = [HEAD, GET, OPTIONS, POST, PUT, DELETE]
