@@ -105,9 +105,11 @@ class VerifyToken:
         user = user_service.get_user_by_external_id(external_user_id)
 
         if user:
+            print(f"User exists in database: {user.id}")
             # User exists in database, cache the existence
             return user
         else:
+            print(f"User does not exist in database: {external_user_id}")
             # User doesn't exist, return None - onboarding will be handled by UserOnboardingMiddleware
             return UserNeedsOnboarding(
                 external_id=external_user_id,

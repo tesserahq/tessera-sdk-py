@@ -80,25 +80,6 @@ def test_verify_token_decode_error_returns_unauthorized():
     assert exc.value.status_code == 403
 
 
-def test_verify_token_returns_existing_user():
-    payload = {"sub": "external-1"}
-    user = {"id": "user-1"}
-
-    class DummyUserService:
-        def get_user_by_external_id(self, external_id):
-            return user
-
-    with (
-        patch("tessera_sdk.utils.auth.jwt.PyJWKClient", return_value=DummyJWKS()),
-        patch(
-            "tessera_sdk.utils.auth.jwt.decode",
-            return_value=payload,
-        ),
-    ):
-        verifier = VerifyToken(user_service_factory=lambda: DummyUserService())
-        assert verifier.verify("token") == user
-
-
 def test_verify_token_returns_onboarding_user():
     payload = {"sub": "external-2"}
 

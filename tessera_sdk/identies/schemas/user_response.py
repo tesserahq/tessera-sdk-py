@@ -55,7 +55,4 @@ class UserResponse(BaseModel):
     service_account: Optional[bool] = None
     """Whether the user is a service account."""
 
-    class ConfigDict:
-        """Pydantic model configuration."""
-
-        from_attributes = True
+    model_config = {"from_attributes": True}

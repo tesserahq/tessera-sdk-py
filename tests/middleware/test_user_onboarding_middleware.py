@@ -25,7 +25,10 @@ class SetUserMiddleware(BaseHTTPMiddleware):
 
 
 def _build_app(
-    user, user_service_factory=None, identies_base_url="https://identies.example.com"
+    user,
+    user_service_factory=None,
+    identies_base_url="https://identies.example.com",
+    skip_onboarding_paths=None,
 ):
     async def handler(request):
         user_state = getattr(request.state, "user", None)
@@ -36,11 +39,12 @@ def _build_app(
             user_id = str(user_state.id)
         return JSONResponse({"user_id": user_id})
 
-    app = Starlette(routes=[Route("/protected", handler)])
+    app = Starlette(routes=[Route("/protected", handler), Route("/skip", handler)])
     app.add_middleware(
         UserOnboardingMiddleware,
         identies_base_url=identies_base_url,
         user_service_factory=user_service_factory,
+        skip_onboarding_paths=skip_onboarding_paths,
     )
     if user is not None:
         app.add_middleware(SetUserMiddleware, user=user)
@@ -129,3 +133,19 @@ def test_onboarding_returns_error_when_onboard_fails():
     assert response.json() == {
         "detail": "User onboarding failed. Please contact support if this issue persists."
     }
+
+
+def test_onboarding_can_be_skipped_for_paths():
+    onboarding_user = UserNeedsOnboarding(needs_onboarding=True, external_id="ext-skip")
+    app = _build_app(user=onboarding_user, skip_onboarding_paths=["/skip"])
+    client = TestClient(app)
+
+    with patch(
+        "tessera_sdk.middleware.user_onboarding.IdentiesClient.userinfo"
+    ) as userinfo_mock:
+        response = client.get("/skip", headers={"Authorization": "Bearer token"})
+
+    assert response.status_code == 200
+    # UserNeedsOnboarding has no `id`, and we skipped onboarding, so handler returns None
+    assert response.json() == {"user_id": None}
+    userinfo_mock.assert_not_called()

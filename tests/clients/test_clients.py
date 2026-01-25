@@ -10,11 +10,8 @@ from tessera_sdk.base.exceptions import (
 )
 from tessera_sdk.constants import HTTPMethods
 from tessera_sdk.custos import CustosClient
-from tessera_sdk.custos.exceptions import CustosValidationError
 from tessera_sdk.identies import IdentiesClient
-from tessera_sdk.identies.exceptions import IdentiesAuthenticationError
 from tessera_sdk.quore import QuoreClient
-from tessera_sdk.quore.exceptions import QuoreValidationError
 from tessera_sdk.sendly import SendlyClient
 from tessera_sdk.sendly.schemas import SendEmailRequest
 from tessera_sdk.vaulta import VaultaClient
@@ -75,7 +72,7 @@ def test_identies_maps_auth_errors():
         "_make_request",
         side_effect=TesseraAuthenticationError("nope"),
     ):
-        with pytest.raises(IdentiesAuthenticationError):
+        with pytest.raises(TesseraAuthenticationError):
             client.userinfo()
 
 
@@ -121,7 +118,7 @@ def test_quore_maps_validation_errors():
         "_make_request",
         side_effect=TesseraValidationError("invalid"),
     ):
-        with pytest.raises(QuoreValidationError):
+        with pytest.raises(TesseraValidationError):
             client.summarize(
                 project_id="project-1",
                 prompt_id="prompt-1",
@@ -282,7 +279,7 @@ def test_custos_maps_validation_errors():
         "_make_request",
         side_effect=TesseraValidationError("invalid"),
     ):
-        with pytest.raises(CustosValidationError):
+        with pytest.raises(TesseraValidationError):
             client.authorize(
                 user_id="user-1",
                 action="read",

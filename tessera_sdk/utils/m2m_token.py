@@ -44,7 +44,6 @@ class M2MTokenClient(BaseClient):
         self,
         provider_domain: Optional[str] = None,
         timeout: int = 30,
-        max_retries: int = 3,
         cache_buffer_seconds: int = 60,
         cache_service: Optional[Cache] = None,
         session: Optional[requests.Session] = None,
@@ -56,7 +55,6 @@ class M2MTokenClient(BaseClient):
             provider_domain: OAuth/OIDC provider domain (e.g., 'dev-si3yygt34d0fk7hc.us.auth0.com')
                            If not provided, will use settings.
             timeout: Request timeout in seconds
-            max_retries: Maximum number of retries for failed requests
             cache_buffer_seconds: Number of seconds before token expiry to refresh the token (default: 60)
             session: Optional requests.Session instance to use
         """
@@ -74,7 +72,6 @@ class M2MTokenClient(BaseClient):
             base_url=f"https://{self.provider_domain}",
             api_token=None,
             timeout=timeout,
-            max_retries=max_retries,
             session=session,
             service_name="m2m-token",
         )

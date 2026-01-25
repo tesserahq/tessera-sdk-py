@@ -27,7 +27,4 @@ class IntrospectResponse(BaseModel):
     expires_at: Optional[datetime] = None
     """Expiration date of the API key. Only present if active is True."""
 
-    class ConfigDict:
-        """Pydantic model configuration."""
-
-        from_attributes = True
+    model_config = {"from_attributes": True}
