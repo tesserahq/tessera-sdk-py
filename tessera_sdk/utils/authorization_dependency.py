@@ -230,6 +230,7 @@ def authorize(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="Access denied",
                     )
+                request.state.authorized = True
                 return True
 
         logger.debug(
@@ -302,6 +303,7 @@ def authorize(
             if "Authorization" in custos_client.session.headers:
                 del custos_client.session.headers["Authorization"]
 
+        request.state.authorized = True
         return True
 
     return authorization_dependency
