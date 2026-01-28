@@ -3,7 +3,6 @@ Service factory for creating service instances with database sessions from reque
 """
 
 from typing import Any
-from starlette.requests import Request
 from tessera_sdk.core.database_manager import DatabaseManager
 
 

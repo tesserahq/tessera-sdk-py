@@ -297,7 +297,7 @@ class NatsHealthcheck:
                             f"Failed to unsubscribe from {test_subject}: {e}"
                         )
 
-        except IncorrectState as e:
+        except IncorrectState:
             error_msg = (
                 "NATS connection in IncorrectState. "
                 "The broker connection is not in a valid state for publishing messages."
@@ -328,7 +328,7 @@ class NatsHealthcheck:
                 "settings": settings_info,
                 "steps": [step.to_dict() for step in steps],
             }
-        except asyncio.TimeoutError as e:
+        except asyncio.TimeoutError:
             error_msg = (
                 f"Connection timeout after {self._timeout}s. "
                 f"This may indicate the NATS server is unreachable or not responding."

@@ -5,12 +5,8 @@ FastStream NATS router and publishers for account-related events.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-import uuid
-from typing import Optional
 
-from nats.aio.client import Client as NatsClient  # type: ignore[import]
 from faststream.exceptions import IncorrectState  # type: ignore[import]
 from faststream.nats.fastapi import NatsRouter  # type: ignore[import]
 

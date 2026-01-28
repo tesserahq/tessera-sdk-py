@@ -5,8 +5,8 @@ This class encapsulates database engine creation, session management,
 and event listeners. It can be easily moved to a common package.
 """
 
-from typing import Optional, Generator
-from sqlalchemy import create_engine, event
+from typing import Generator
+from sqlalchemy import create_engine
 from sqlalchemy.orm import (
     sessionmaker,
 )

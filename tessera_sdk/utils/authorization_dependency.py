@@ -174,6 +174,7 @@ def authorize(
             6. Raise HTTPException(403) if authorization is denied
         """
 
+        print(f"Authorization dependency called for path: {request.url.path}")
         # Get user from request state (set by authentication middleware)
         if not hasattr(request.state, "user") or request.state.user is None:
             raise HTTPException(
@@ -196,16 +197,7 @@ def authorize(
             )
 
         # Resolve domain using the provided resolver
-        try:
-            domain = await domain_resolver(request)
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Error resolving domain: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot infer domain: {str(e)}",
-            )
+        domain = await domain_resolver(request)
 
         # Get settings
         settings = get_settings()
@@ -230,12 +222,8 @@ def authorize(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="Access denied",
                     )
-                request.state.authorized = True
                 return True
 
-        logger.debug(
-            f"Calling Custos API to authorize user {user_id} for action {action} on resource {resource} in domain {domain}"
-        )
         # Extract authentication token from request headers
         auth_token = _extract_auth_token(request)
 
@@ -287,7 +275,6 @@ def authorize(
             )
         except (TesseraClientError, TesseraServerError) as e:
             logger.error(f"Custos service error: {e}")
-            print(f"Custos service error: {e}")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Authorization service unavailable",
@@ -303,7 +290,6 @@ def authorize(
             if "Authorization" in custos_client.session.headers:
                 del custos_client.session.headers["Authorization"]
 
-        request.state.authorized = True
         return True
 
     return authorization_dependency

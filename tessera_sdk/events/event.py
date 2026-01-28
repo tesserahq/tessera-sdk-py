@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Any, Dict, Optional, Union, List
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from uuid import UUID, uuid4
-from typing import Optional
 from tessera_sdk.config import get_settings
 
 

@@ -27,7 +27,6 @@ class SetUserMiddleware(BaseHTTPMiddleware):
 def _build_app(
     user,
     user_service_factory=None,
-    identies_base_url="https://identies.example.com",
     skip_onboarding_paths=None,
 ):
     async def handler(request):
@@ -42,7 +41,6 @@ def _build_app(
     app = Starlette(routes=[Route("/protected", handler), Route("/skip", handler)])
     app.add_middleware(
         UserOnboardingMiddleware,
-        identies_base_url=identies_base_url,
         user_service_factory=user_service_factory,
         skip_onboarding_paths=skip_onboarding_paths,
     )
@@ -55,7 +53,11 @@ def test_onboarding_skips_without_user():
     app = _build_app(user=None)
     client = TestClient(app)
 
-    response = client.get("/protected")
+    with patch(
+        "tessera_sdk.middleware.user_onboarding.get_settings",
+        return_value=SimpleNamespace(identies_base_url="https://identies.example.com"),
+    ):
+        response = client.get("/protected")
 
     assert response.status_code == 200
     assert response.json() == {"user_id": None}
@@ -66,7 +68,11 @@ def test_onboarding_passes_existing_user():
     app = _build_app(user=existing_user)
     client = TestClient(app)
 
-    response = client.get("/protected")
+    with patch(
+        "tessera_sdk.middleware.user_onboarding.get_settings",
+        return_value=SimpleNamespace(identies_base_url="https://identies.example.com"),
+    ):
+        response = client.get("/protected")
 
     assert response.status_code == 200
     assert response.json() == {"user_id": "user-1"}
@@ -98,9 +104,17 @@ def test_onboarding_creates_user_when_needed():
     app = _build_app(user=onboarding_user, user_service_factory=user_service_factory)
     client = TestClient(app)
 
-    with patch(
-        "tessera_sdk.middleware.user_onboarding.IdentiesClient.userinfo",
-        return_value=userinfo,
+    with (
+        patch(
+            "tessera_sdk.middleware.user_onboarding.get_settings",
+            return_value=SimpleNamespace(
+                identies_base_url="https://identies.example.com"
+            ),
+        ),
+        patch(
+            "tessera_sdk.middleware.user_onboarding.IdentiesClient.userinfo",
+            return_value=userinfo,
+        ),
     ):
         response = client.get("/protected", headers={"Authorization": "Bearer token"})
 
@@ -123,9 +137,17 @@ def test_onboarding_returns_error_when_onboard_fails():
     app = _build_app(user=onboarding_user, user_service_factory=None)
     client = TestClient(app)
 
-    with patch(
-        "tessera_sdk.middleware.user_onboarding.IdentiesClient.userinfo",
-        return_value=userinfo,
+    with (
+        patch(
+            "tessera_sdk.middleware.user_onboarding.get_settings",
+            return_value=SimpleNamespace(
+                identies_base_url="https://identies.example.com"
+            ),
+        ),
+        patch(
+            "tessera_sdk.middleware.user_onboarding.IdentiesClient.userinfo",
+            return_value=userinfo,
+        ),
     ):
         response = client.get("/protected", headers={"Authorization": "Bearer token"})
 
@@ -140,9 +162,17 @@ def test_onboarding_can_be_skipped_for_paths():
     app = _build_app(user=onboarding_user, skip_onboarding_paths=["/skip"])
     client = TestClient(app)
 
-    with patch(
-        "tessera_sdk.middleware.user_onboarding.IdentiesClient.userinfo"
-    ) as userinfo_mock:
+    with (
+        patch(
+            "tessera_sdk.middleware.user_onboarding.get_settings",
+            return_value=SimpleNamespace(
+                identies_base_url="https://identies.example.com"
+            ),
+        ),
+        patch(
+            "tessera_sdk.middleware.user_onboarding.IdentiesClient.userinfo"
+        ) as userinfo_mock,
+    ):
         response = client.get("/skip", headers={"Authorization": "Bearer token"})
 
     assert response.status_code == 200

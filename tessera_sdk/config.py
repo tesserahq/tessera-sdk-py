@@ -1,8 +1,6 @@
-import os
-from pydantic import AliasChoices, Field, model_validator
+from pydantic import AliasChoices, Field
 from typing import Optional
 from pydantic_settings import BaseSettings
-from sqlalchemy.engine.url import make_url, URL
 
 
 class Settings(BaseSettings):

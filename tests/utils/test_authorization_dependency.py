@@ -20,10 +20,14 @@ class DummyAuthorizeResponse:
         self.allowed = allowed
 
 
-def _make_request(user=None, headers=None):
+def _make_request(user=None, headers=None, url_path="/"):
     if headers is None:
         headers = {}
-    return SimpleNamespace(headers=headers, state=SimpleNamespace(user=user))
+    return SimpleNamespace(
+        headers=headers,
+        state=SimpleNamespace(user=user),
+        url=SimpleNamespace(path=url_path),
+    )
 
 
 @pytest.mark.anyio
@@ -107,10 +111,8 @@ async def test_authorize_domain_resolver_error():
     ):
         dependency = authorize("read", "resource", resolve_domain)
 
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(ValueError, match="boom"):
             await dependency(request)
-
-    assert exc.value.status_code == 400
 
 
 @pytest.mark.anyio
