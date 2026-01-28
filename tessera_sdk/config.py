@@ -11,9 +11,9 @@ class Settings(BaseSettings):
     redis_namespace: str = Field(
         default="llama_index", json_schema_extra={"env": "REDIS_NAMESPACE"}
     )
-    identies_base_url: str = Field(
+    identies_api_url: str = Field(
         default="https://identies.tessera.com",
-        json_schema_extra={"env": "IDENTIES_BASE_URL"},
+        json_schema_extra={"env": "IDENTIES_API_URL"},
     )
     custos_api_url: str = Field(
         default="https://custos.tessera.com",

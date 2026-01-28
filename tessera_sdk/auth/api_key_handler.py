@@ -9,7 +9,7 @@ class APIKeyHandler:
     def __init__(self):
         self.settings = get_settings()
         self.identies_client = IdentiesClient(
-            base_url=self.settings.identies_base_url,
+            base_url=self.settings.identies_api_url,
             timeout=int(self.settings.tesserasdk_auth_middleware_timeout),
         )
 

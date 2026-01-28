@@ -55,7 +55,7 @@ def test_onboarding_skips_without_user():
 
     with patch(
         "tessera_sdk.middleware.user_onboarding.get_settings",
-        return_value=SimpleNamespace(identies_base_url="https://identies.example.com"),
+        return_value=SimpleNamespace(identies_api_url="https://identies.example.com"),
     ):
         response = client.get("/protected")
 
@@ -70,7 +70,7 @@ def test_onboarding_passes_existing_user():
 
     with patch(
         "tessera_sdk.middleware.user_onboarding.get_settings",
-        return_value=SimpleNamespace(identies_base_url="https://identies.example.com"),
+        return_value=SimpleNamespace(identies_api_url="https://identies.example.com"),
     ):
         response = client.get("/protected")
 
@@ -108,7 +108,7 @@ def test_onboarding_creates_user_when_needed():
         patch(
             "tessera_sdk.middleware.user_onboarding.get_settings",
             return_value=SimpleNamespace(
-                identies_base_url="https://identies.example.com"
+                identies_api_url="https://identies.example.com"
             ),
         ),
         patch(
@@ -141,7 +141,7 @@ def test_onboarding_returns_error_when_onboard_fails():
         patch(
             "tessera_sdk.middleware.user_onboarding.get_settings",
             return_value=SimpleNamespace(
-                identies_base_url="https://identies.example.com"
+                identies_api_url="https://identies.example.com"
             ),
         ),
         patch(
@@ -166,7 +166,7 @@ def test_onboarding_can_be_skipped_for_paths():
         patch(
             "tessera_sdk.middleware.user_onboarding.get_settings",
             return_value=SimpleNamespace(
-                identies_base_url="https://identies.example.com"
+                identies_api_url="https://identies.example.com"
             ),
         ),
         patch(

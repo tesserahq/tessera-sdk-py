@@ -51,13 +51,13 @@ app = FastAPI()
 # Add middlewares (order matters!)
 app.add_middleware(
     UserOnboardingMiddleware,
-    identies_base_url="https://api.identies.com",
+    identies_api_url="https://api.identies.com",
     user_service=MyUserService()
 )
 
 app.add_middleware(
     AuthenticationMiddleware,
-    identies_base_url="https://api.identies.com"
+    identies_api_url="https://api.identies.com"
 )
 
 # Your endpoints
@@ -85,8 +85,8 @@ app = Starlette(routes=[
 ])
 
 # Add middlewares
-app.add_middleware(UserOnboardingMiddleware, identies_base_url="https://api.identies.com")
-app.add_middleware(AuthenticationMiddleware, identies_base_url="https://api.identies.com")
+app.add_middleware(UserOnboardingMiddleware, identies_api_url="https://api.identies.com")
+app.add_middleware(AuthenticationMiddleware, identies_api_url="https://api.identies.com")
 ```
 
 ### 3. With Quart (Async Flask-like)
@@ -98,8 +98,8 @@ from tessera_sdk.middleware.user_onboarding import UserOnboardingMiddleware
 
 app = Quart(__name__)
 
-app.add_middleware(UserOnboardingMiddleware, identies_base_url="https://api.identies.com")
-app.add_middleware(AuthenticationMiddleware, identies_base_url="https://api.identies.com")
+app.add_middleware(UserOnboardingMiddleware, identies_api_url="https://api.identies.com")
+app.add_middleware(AuthenticationMiddleware, identies_api_url="https://api.identies.com")
 
 @app.route("/protected")
 async def protected_endpoint():
@@ -139,10 +139,10 @@ export IDENTIES_BASE_URL="https://api.identies.com"
 ### Middleware Parameters
 
 #### AuthenticationMiddleware
-- `identies_base_url`: Base URL for Identies API
+- `identies_api_url`: Base URL for Identies API
 
 #### UserOnboardingMiddleware
-- `identies_base_url`: Base URL for Identies API
+- `identies_api_url`: Base URL for Identies API
 - `user_service`: Your user service implementation (optional)
 
 ## Error Handling

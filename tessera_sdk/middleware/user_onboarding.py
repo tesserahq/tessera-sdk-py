@@ -30,17 +30,17 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
         skip_onboarding_paths: Optional[List[str]] = None,
     ):
         super().__init__(app)
-        self.identies_base_url = get_settings().identies_base_url
+        self.identies_api_url = get_settings().identies_api_url
         self.user_service_factory = user_service_factory
         self.skip_onboarding_paths = (
             skip_onboarding_paths if skip_onboarding_paths is not None else []
         )
 
         # Initialize Identies client
-        self.identies_client = IdentiesClient(base_url=self.identies_base_url)
+        self.identies_client = IdentiesClient(base_url=self.identies_api_url)
 
         logger.debug(
-            f"UserOnboardingMiddleware initialized with Identies base URL: {self.identies_base_url}"
+            f"UserOnboardingMiddleware initialized with Identies base URL: {self.identies_api_url}"
         )
 
     async def dispatch(self, request: Request, call_next):
