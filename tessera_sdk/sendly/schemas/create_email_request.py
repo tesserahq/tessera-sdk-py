@@ -5,21 +5,17 @@ from typing import List, Dict, Any
 class TemplateVariables(BaseModel):
     """Schema for template variables."""
 
-    class ConfigDict:
-        """Pydantic model configuration."""
-
-        from_attributes = True
-        extra = "allow"
+    model_config = {"from_attributes": True}
 
 
-class SendEmailRequest(BaseModel):
+class CreateEmailRequest(BaseModel):
     """Schema for send email request."""
 
     name: str
     """Name/identifier for the email."""
 
-    tenant_id: str
-    """Tenant identifier."""
+    project_id: str
+    """Project identifier."""
 
     from_email: str
     """Sender email address."""
@@ -36,7 +32,4 @@ class SendEmailRequest(BaseModel):
     template_variables: Dict[str, Any] = Field(default_factory=dict)
     """Variables to be replaced in the email template."""
 
-    class ConfigDict:
-        """Pydantic model configuration."""
-
-        from_attributes = True
+    model_config = {"from_attributes": True}

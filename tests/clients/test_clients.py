@@ -13,7 +13,7 @@ from tessera_sdk.custos import CustosClient
 from tessera_sdk.identies import IdentiesClient
 from tessera_sdk.quore import QuoreClient
 from tessera_sdk.sendly import SendlyClient
-from tessera_sdk.sendly.schemas import SendEmailRequest
+from tessera_sdk.sendly.schemas import CreateEmailRequest
 from tessera_sdk.vaulta import VaultaClient
 
 
@@ -127,10 +127,10 @@ def test_quore_maps_validation_errors():
             )
 
 
-def test_sendly_send_email_uses_payload():
-    request = SendEmailRequest(
+def test_sendly_create_email_uses_payload():
+    request = CreateEmailRequest(
         name="Welcome",
-        tenant_id="tenant-1",
+        project_id="tenant-1",
         from_email="noreply@example.com",
         subject="Welcome!",
         html="<p>Hello</p>",
@@ -143,9 +143,9 @@ def test_sendly_send_email_uses_payload():
         "subject": "Welcome!",
         "body": "<p>Hello</p>",
         "status": "sent",
-        "provider_id": "provider-1",
+        "provider": "provider-1",
         "provider_message_id": "message-1",
-        "tenant_id": "tenant-1",
+        "project_id": "tenant-1",
         "id": "email-1",
     }
     client = SendlyClient(base_url="https://sendly.example.com")
@@ -153,11 +153,11 @@ def test_sendly_send_email_uses_payload():
     with patch.object(
         SendlyClient, "_make_request", return_value=DummyResponse(payload)
     ) as mock_request:
-        result = client.send_email(request)
+        result = client.create_email(request)
 
     mock_request.assert_called_once_with(
         HTTPMethods.POST,
-        "/emails/send",
+        "/emails",
         data=request.model_dump(),
     )
     assert result.status == "sent"

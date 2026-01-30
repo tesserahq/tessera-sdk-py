@@ -8,8 +8,9 @@ import requests
 
 from ..base.client import BaseClient
 from ..constants import HTTPMethods
-from .schemas.send_email_request import SendEmailRequest
-from .schemas.send_email_response import SendEmailResponse
+from .schemas.create_email_request import CreateEmailRequest
+from .schemas.create_email_response import CreateEmailResponse
+from ..config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class SendlyClient(BaseClient):
 
     def __init__(
         self,
-        base_url: str,
+        base_url: Optional[str] = None,
         api_token: Optional[str] = None,
         timeout: Optional[int] = None,
         session: Optional[requests.Session] = None,
@@ -37,6 +38,9 @@ class SendlyClient(BaseClient):
             timeout: Request timeout in seconds
             session: Optional requests.Session instance to use
         """
+        if base_url is None:
+            base_url = get_settings().sendly_api_url
+
         super().__init__(
             base_url=base_url,
             api_token=api_token,
@@ -45,18 +49,18 @@ class SendlyClient(BaseClient):
             service_name="sendly",
         )
 
-    def send_email(
+    def create_email(
         self,
-        request: SendEmailRequest,
-    ) -> SendEmailResponse:
+        request: CreateEmailRequest,
+    ) -> CreateEmailResponse:
         """
         Send an email.
 
         Args:
-            request: SendEmailRequest object containing all email details
+            request: CreateEmailRequest object containing all email details
 
         Returns:
-            SendEmailResponse object containing the email sending result
+            CreateEmailResponse object containing the email sending result
 
         Raises:
             SendlyValidationError: If request data is invalid
@@ -64,24 +68,24 @@ class SendlyClient(BaseClient):
             SendlyServerError: If the server encounters an error
 
         Example:
-            >>> from tessera_sdk.sendly.schemas import SendEmailRequest
+            >>> from tessera_sdk.sendly.schemas import CreateEmailRequest
             >>> client = SendlyClient(base_url="https://sendly.example.com", api_token="your-token")
-            >>> request = SendEmailRequest(
+            >>> request = CreateEmailRequest(
             ...     name="Welcome Email",
-            ...     tenant_id="tenant-123",
-            ...     provider_id="provider-456",
+            ...     project_id="a0ca28dc-b064-43b7-90c4-208031508397",
+            ...     provider="provider-456",
             ...     from_email="noreply@example.com",
             ...     subject="Welcome!",
             ...     html="<html><body>Hello ${name}!</body></html>",
             ...     to=["user@example.com"],
             ...     template_variables={"name": "John"}
             ... )
-            >>> response = client.send_email(request)
+            >>> response = client.create_email(request)
             >>> print(response.status)  # 'sent'
         """
-        endpoint = "/emails/send"
+        endpoint = "/emails"
 
         response = self._make_request(
             HTTPMethods.POST, endpoint, data=request.model_dump()
         )
-        return SendEmailResponse(**response.json())
+        return CreateEmailResponse(**response.json())
