@@ -103,7 +103,7 @@ print(f"Tokens used: {result.tokens_used}")
 
 ```python
 from tessera_sdk import SendlyClient
-from tessera_sdk.sendly.schemas import SendEmailRequest
+from tessera_sdk.sendly.schemas import CreateEmailRequest
 
 client = SendlyClient(
     base_url="https://sendly-api.yourdomain.com",
@@ -111,10 +111,10 @@ client = SendlyClient(
 )
 
 # Send an email
-request = SendEmailRequest(
+request = CreateEmailRequest(
     name="Welcome Email",
-    tenant_id="your-tenant-id",
-    provider_id="your-provider-id",
+    project_id="your-tenant-id",
+    provider="your-provider-id",
     from_email="hello@example.com",
     subject="Welcome to our platform!",
     html="<html><body>Hello ${name}! Welcome to ${organizationName}.</body></html>",
@@ -125,7 +125,7 @@ request = SendEmailRequest(
     }
 )
 
-result = client.send_email(request)
+result = client.create_email(request)
 
 print(f"Email sent! Status: {result.status}")
 print(f"Email ID: {result.id}")
@@ -134,14 +134,14 @@ print(f"Sent at: {result.sent_at}")
 
 ### Available Methods
 
-- `send_email(request: SendEmailRequest)` - Send an email with template variable substitution
+- `create_email(request: CreateEmailRequest)` - Send an email with template variable substitution
 
 ### Request/Response Schemas
 
-#### SendEmailRequest
+#### CreateEmailRequest
 - `name: str` - Name/identifier for the email
-- `tenant_id: str` - Tenant identifier
-- `provider_id: str` - Provider identifier
+- `project_id: str` - Tenant identifier
+- `provider: str` - Provider identifier
 - `from_email: str` - Sender email address
 - `subject: str` - Email subject line
 - `html: str` - HTML content with template variables (e.g., ${variableName})
@@ -154,9 +154,9 @@ print(f"Sent at: {result.sent_at}")
 - `subject: str` - Email subject line
 - `body: str` - Processed email body with variables replaced
 - `status: str` - Email status (e.g., 'sent', 'failed')
-- `provider_id: str` - Provider identifier
+- `provider: str` - Provider identifier
 - `provider_message_id: str` - Provider's message identifier
-- `tenant_id: str` - Tenant identifier
+- `project_id: str` - Tenant identifier
 - `sent_at: datetime` - When the email was sent
 - `error_message: str` - Error message if failed (optional)
 - `created_at: datetime` - Record creation timestamp

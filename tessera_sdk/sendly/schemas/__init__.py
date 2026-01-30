@@ -2,11 +2,11 @@
 Sendly schemas module.
 """
 
-from .send_email_request import SendEmailRequest, TemplateVariables
-from .send_email_response import SendEmailResponse
+from .create_email_request import CreateEmailRequest, TemplateVariables
+from .create_email_response import CreateEmailResponse
 
 __all__ = [
-    "SendEmailRequest",
+    "CreateEmailRequest",
     "TemplateVariables",
-    "SendEmailResponse",
+    "CreateEmailResponse",
 ]

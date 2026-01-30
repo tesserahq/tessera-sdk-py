@@ -3,7 +3,7 @@ from typing import Optional
 from datetime import datetime
 
 
-class SendEmailResponse(BaseModel):
+class CreateEmailResponse(BaseModel):
     """Schema for send email response."""
 
     from_email: str
@@ -21,14 +21,14 @@ class SendEmailResponse(BaseModel):
     status: str
     """Status of the email (e.g., 'sent', 'failed')."""
 
-    provider_id: str
+    provider: str
     """Provider identifier."""
 
     provider_message_id: str
     """Provider's message identifier."""
 
-    tenant_id: str
-    """Tenant identifier."""
+    project_id: str
+    """Project identifier."""
 
     id: str
     """Unique identifier for the email record."""
@@ -45,7 +45,4 @@ class SendEmailResponse(BaseModel):
     updated_at: Optional[datetime] = None
     """Timestamp when the record was last updated."""
 
-    class ConfigDict:
-        """Pydantic model configuration."""
-
-        from_attributes = True
+    model_config = {"from_attributes": True}

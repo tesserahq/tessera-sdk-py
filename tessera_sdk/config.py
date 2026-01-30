@@ -19,6 +19,10 @@ class Settings(BaseSettings):
         default="https://custos.tessera.com",
         json_schema_extra={"env": "CUSTOS_API_URL"},
     )
+    sendly_api_url: str = Field(
+        default="https://sendly.tessera.com",
+        json_schema_extra={"env": "SENDLY_API_URL"},
+    )
     authorization_cache_enabled: bool = Field(
         default=False,
         json_schema_extra={"env": "AUTHORIZATION_CACHE_ENABLED"},
