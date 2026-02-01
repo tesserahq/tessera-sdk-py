@@ -51,12 +51,26 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
             return await call_next(request)
 
+        # Check for Bearer token (may be JWT or API key if it starts with "ak_")
         if not self.token_handler.has_bearer_token_header(request.headers):
             return JSONResponse(
                 status_code=401, content={"error": "Missing or invalid token"}
             )
+
         token = self.token_handler.get_bearer_token(request.headers)
 
+        # Bearer token starting with "ak_" is treated as an API key
+        if token.startswith("ak_"):
+            user = self.api_key_handler.validate(token)
+            if not user:
+                return JSONResponse(
+                    status_code=401, content={"error": "Invalid API key"}
+                )
+
+            request.state.user = user
+            return await call_next(request)
+
+        # Otherwise treat as JWT
         try:
             payload = self.token_handler.verify(token)
 

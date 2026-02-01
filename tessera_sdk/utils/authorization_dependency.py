@@ -174,7 +174,6 @@ def authorize(
             6. Raise HTTPException(403) if authorization is denied
         """
 
-        print(f"Authorization dependency called for path: {request.url.path}")
         # Get user from request state (set by authentication middleware)
         if not hasattr(request.state, "user") or request.state.user is None:
             raise HTTPException(
