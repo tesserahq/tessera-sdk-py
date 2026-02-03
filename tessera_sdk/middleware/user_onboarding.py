@@ -144,8 +144,12 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
         user_service = self.user_service_factory()
 
         # Use the user service to onboard the user
-        onboarded_user = user_service.onboard_user(user_data)
-        return onboarded_user
+        try:
+            onboarded_user = user_service.onboard_user(user_data)
+            return onboarded_user
+        finally:
+            # TODO: This is a hack to close the database connection. We should find a better way to do this.
+            user_service.db.close()
 
     async def _fetch_user_from_identies(self, request: Request) -> Optional[Any]:
         """

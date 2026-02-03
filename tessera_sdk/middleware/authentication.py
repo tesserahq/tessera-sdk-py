@@ -79,8 +79,12 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
             user_service = self.user_service_factory()
 
-            # User not in cache or cache was invalid, check database
-            user = user_service.get_user_by_external_id(external_user_id)
+            try:
+                # User not in cache or cache was invalid, check database
+                user = user_service.get_user_by_external_id(external_user_id)
+            finally:
+                # TODO: This is a hack to close the database connection. We should find a better way to do this.
+                user_service.db.close()
 
             if not user:
                 user = UserNeedsOnboarding(

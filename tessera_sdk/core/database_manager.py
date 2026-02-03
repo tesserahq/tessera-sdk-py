@@ -12,6 +12,7 @@ from sqlalchemy.orm import (
 )
 from sqlalchemy.orm.session import Session as SessionType
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from contextlib import contextmanager
 
 
 class DatabaseManager:
@@ -92,3 +93,17 @@ class DatabaseManager:
     def dispose(self):
         """Dispose of the database engine and close all connections."""
         self.engine.dispose()
+
+    @contextmanager
+    def db_session(self):
+        """Context manager: commit on success, rollback on exception, always close."""
+        session = self.SessionLocal()
+        try:
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            print("closing db session")
+            session.close()
