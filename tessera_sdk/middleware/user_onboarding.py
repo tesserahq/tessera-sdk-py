@@ -148,8 +148,10 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
             onboarded_user = user_service.onboard_user(user_data)
             return onboarded_user
         finally:
-            # TODO: This is a hack to close the database connection. We should find a better way to do this.
-            user_service.db.close()
+            if hasattr(user_service, "db"):
+                user_service.db.close()
+            elif callable(getattr(user_service, "close", None)):
+                user_service.close()
 
     async def _fetch_user_from_identies(self, request: Request) -> Optional[Any]:
         """
