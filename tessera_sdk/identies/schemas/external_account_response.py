@@ -1,10 +1,12 @@
 """Schema for external account API responses and link token requests/responses."""
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 from uuid import UUID
 
 from pydantic import BaseModel
+
+from .user_response import UserResponse
 
 
 class ExternalAccountResponse(BaseModel):
@@ -36,5 +38,15 @@ class LinkTokenResponse(BaseModel):
 
     token: str
     expires_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class CheckResponse(BaseModel):
+    """Response when checking if an external account is linked."""
+
+    linked: bool
+    user: Optional[UserResponse] = None
+    external_accounts: Optional[ExternalAccountResponse] = None
 
     model_config = {"from_attributes": True}

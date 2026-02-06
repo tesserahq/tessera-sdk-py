@@ -9,6 +9,7 @@ import requests
 from ..base.client import BaseClient
 from ..constants import HTTPMethods
 from .schemas.external_account_response import (
+    CheckResponse,
     ExternalAccountPageResponse,
     ExternalAccountResponse,
     LinkTokenResponse,
@@ -212,6 +213,24 @@ class IdentiesClient(BaseClient):
             params=params,
         )
         return ExternalAccountPageResponse(**response.json())
+
+    def check_external_account(self, platform: str, external_id: str) -> CheckResponse:
+        """
+        Check if an external account (platform + external_id) is linked to a user.
+
+        Args:
+            platform: External platform (e.g. telegram).
+            external_id: External platform user id.
+
+        Returns:
+            CheckResponse with linked status, user, and external_accounts when found.
+        """
+        response = self._make_request(
+            HTTPMethods.POST,
+            "/external-accounts/check",
+            data={"platform": platform, "external_id": external_id},
+        )
+        return CheckResponse(**response.json())
 
     def link_external_account(self, token: str) -> ExternalAccountResponse:
         """
