@@ -184,6 +184,35 @@ class IdentiesClient(BaseClient):
         )
         return ExternalAccountPageResponse(**response.json())
 
+    def list_user_external_accounts(
+        self,
+        user_id: str,
+        platform: Optional[str] = None,
+        page: int = 1,
+        size: int = 50,
+    ) -> ExternalAccountPageResponse:
+        """
+        List external accounts for a specific user (paginated).
+
+        Args:
+            user_id: ID of the user whose external accounts to list.
+            platform: Optional filter by platform (e.g. telegram).
+            page: Page number (1-based).
+            size: Number of items per page.
+
+        Returns:
+            ExternalAccountPageResponse with items, total, page, size, pages.
+        """
+        params: dict[str, int | str] = {"page": page, "size": size}
+        if platform is not None:
+            params["platform"] = platform
+        response = self._make_request(
+            HTTPMethods.GET,
+            f"/users/{user_id}/external-accounts",
+            params=params,
+        )
+        return ExternalAccountPageResponse(**response.json())
+
     def link_external_account(self, token: str) -> ExternalAccountResponse:
         """
         Link the current user to the external account referenced by the token.

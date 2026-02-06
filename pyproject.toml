@@ -16,10 +16,10 @@ pydantic = {extras = ["email"], version = "^2.12.4"}
 urllib3 = ">=1.26.0"
 starlette = ">=0.50.0"
 sqlalchemy = "^2.0.46"
-cryptography = "^46.0.3"
+cryptography = "^46.0.4"
 pydantic-settings = "^2.9.1"
 redis = ">=5.0.1,<8"
-faststream = {extras = ["nats"], version = "^0.6.3"}
+faststream = {extras = ["nats"], version = "^0.6.6"}
 jinja2 = "^3.1.6"
 
 opentelemetry-sdk = "^1.39.1"
@@ -29,13 +29,13 @@ opentelemetry-instrumentation-sqlalchemy = "^0.60b1"
 pytest = ">=7.0.0"
 pytest-cov = ">=4.0.0"
 black = "^26.0.0"
-ruff = "^0.14.0"
+ruff = "^0.15.0"
 isort = ">=5.0.0"
 mypy = ">=1.0.0"
 types-requests = ">=2.28.0"
 httpx = "^0.28.1"
-fastapi = "^0.128.0"
-pyjwt = "^2.10.1"
+fastapi = "^0.128.2"
+pyjwt = "^2.11.0"
 
 [tool.poetry.urls]
 homepage = "https://github.com/tesserahq/tessera-sdk-py"
