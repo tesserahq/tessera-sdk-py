@@ -1,3 +1,4 @@
+import json
 from pydantic import AliasChoices, Field
 from typing import Optional
 from pydantic_settings import BaseSettings
@@ -65,6 +66,12 @@ class Settings(BaseSettings):
     oidc_api_audience: str = "https://test-api"
     oidc_issuer: str = "https://test.oidc.com/"
     oidc_algorithms: str = "RS256"
+    oidc_jwks_urls: Optional[str] = Field(
+        default=None, json_schema_extra={"env": "OIDC_JWKS_URLS"}
+    )
+    auth_providers_json: Optional[str] = Field(
+        default=None, json_schema_extra={"env": "AUTH_PROVIDERS_JSON"}
+    )
 
     service_account_client_id: str = Field(
         default="", json_schema_extra={"env": "SERVICE_ACCOUNT_CLIENT_ID"}
@@ -92,6 +99,39 @@ class Settings(BaseSettings):
     def is_test(self) -> bool:
         """Check if the current environment is test."""
         return self.environment.lower() == "test"
+
+    def get_oidc_jwks_urls(self) -> list[str]:
+        if self.oidc_jwks_urls:
+            urls = [v.strip() for v in self.oidc_jwks_urls.split(",") if v.strip()]
+        else:
+            urls = []
+            if self.oidc_domain:
+                urls.append(f"https://{self.oidc_domain}/.well-known/jwks.json")
+            if self.identies_api_url:
+                urls.append(f"{self.identies_api_url}/.well-known/jwks.json")
+        return list(dict.fromkeys(urls))
+
+    def get_auth_providers(self) -> list[dict]:
+        """
+        Return auth providers with jwks_url, issuer, and audiences.
+        """
+        if self.auth_providers_json:
+            providers = json.loads(self.auth_providers_json)
+            if not isinstance(providers, list):
+                raise ValueError("AUTH_PROVIDERS_JSON must be a list")
+            return providers
+
+        jwks_urls = self.get_oidc_jwks_urls()
+        if not jwks_urls:
+            return []
+
+        return [
+            {
+                "jwks_url": jwks_urls[0],
+                "issuer": self.oidc_issuer,
+                "audiences": [self.oidc_api_audience],
+            }
+        ]
 
     class Config:
         env_file = ".env"

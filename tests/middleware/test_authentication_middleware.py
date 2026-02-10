@@ -58,6 +58,9 @@ def test_auth_middleware_allows_valid_bearer():
         def get_user_by_external_id(self, external_id):
             return {"id": "user-1"}
 
+        def get_user_by_id_or_external_id(self, user_id_or_external_id):
+            return self.get_user_by_external_id(user_id_or_external_id)
+
     app = _build_app(user_service_factory=lambda: DummyUserService())
     client = TestClient(app)
 

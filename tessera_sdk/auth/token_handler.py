@@ -10,13 +10,63 @@ class TokenHandler:
     def __init__(self):
         self.config = get_settings()
 
-        if self.config.oidc_domain is None:
-            raise ValueError("oidc domain is not set in the configuration.")
+        providers = self.config.get_auth_providers()
+        if not providers:
+            raise ValueError("AUTH_PROVIDERS_JSON or OIDC settings are not configured.")
 
-        # This gets the JWKS from a given URL and does processing so you can
-        # use any of the keys available
-        jwks_url = f"https://{self.config.oidc_domain}/.well-known/jwks.json"
-        self.jwks_client = jwt.PyJWKClient(jwks_url, cache_keys=True)
+        self.providers: list[dict] = []
+        for provider in providers:
+            jwks_url = provider.get("jwks_url")
+            if not jwks_url:
+                continue
+            issuer = provider.get("issuer")
+            audience = provider.get("audience")
+            self.providers.append(
+                {
+                    "jwks_url": jwks_url,
+                    "issuer": issuer,
+                    "audience": audience,
+                    "jwks_client": jwt.PyJWKClient(jwks_url, cache_keys=True),
+                }
+            )
+
+    def verify(self, token: str) -> dict:
+        # Check if token is None or empty
+        if not token:
+            raise UnauthorizedException(detail="Missing or invalid token")
+        # This gets the 'kid' from the passed token
+        last_error: Exception | None = None
+
+        for provider in self.providers:
+            issuer = provider.get("issuer")
+            audience = provider.get("audience")
+            try:
+                signing_key = (
+                    provider["jwks_client"].get_signing_key_from_jwt(token).key
+                )
+            except jwt.exceptions.PyJWKClientError as error:
+                last_error = error
+                continue
+            except jwt.exceptions.DecodeError as error:
+                last_error = error
+                continue
+
+            try:
+                payload = jwt.decode(
+                    token,
+                    signing_key,
+                    algorithms=self.config.oidc_algorithms,
+                    audience=audience,
+                    issuer=issuer,
+                )
+                return payload
+            except Exception as error:
+                last_error = error
+                continue
+
+        if last_error:
+            raise UnauthorizedException(str(last_error))
+        raise UnauthorizedException("Unable to verify token")
 
     def has_bearer_token_header(self, headers) -> bool:
         """
@@ -80,35 +130,3 @@ class TokenHandler:
         if len(parts) == 2 and parts[0].lower() == "bearer":
             return parts[1].strip()
         return ""
-
-    def verify(self, token: str) -> dict:
-        # Check if token is None or empty
-        if not token:
-            raise UnauthorizedException(detail="Missing or invalid token")
-        # This gets the 'kid' from the passed token
-
-        try:
-            signing_key = self.jwks_client.get_signing_key_from_jwt(token).key
-        except jwt.exceptions.PyJWKClientError as error:
-            # raise UnauthorizedException(str(error))
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error)
-            )
-        except jwt.exceptions.DecodeError as error:
-            # raise UnauthorizedException(str(error))
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error)
-            )
-
-        try:
-            payload = jwt.decode(
-                token,
-                signing_key,
-                algorithms=self.config.oidc_algorithms,
-                audience=self.config.oidc_api_audience,
-                issuer=self.config.oidc_issuer,
-            )
-        except Exception as error:
-            raise UnauthorizedException(str(error))
-
-        return payload
