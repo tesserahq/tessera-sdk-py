@@ -15,6 +15,7 @@ from .schemas.external_account_response import (
     LinkTokenResponse,
 )
 from .schemas.introspect_response import IntrospectResponse
+from .schemas.token_exchange_response import TokenExchangeResponse
 from .schemas.user_response import UserResponse
 from ..config import get_settings
 
@@ -260,3 +261,33 @@ class IdentiesClient(BaseClient):
             HTTPMethods.DELETE,
             f"/external-accounts/{external_account_id}",
         )
+
+    def exchange_token(
+        self,
+        user_id: str,
+        requested_audience: str,
+        requested_scope: str | list[str],
+        context: Optional[dict[str, Any]] = None,
+    ) -> TokenExchangeResponse:
+        """
+        Exchange a service account token for a delegated access token.
+
+        Args:
+            user_id: Internal user id to act on behalf of.
+            requested_audience: Target audience for the token.
+            requested_scope: Requested scopes (space-delimited string or list).
+            context: Optional metadata for audit/logging.
+        """
+        body: dict[str, Any] = {
+            "user_id": user_id,
+            "requested_audience": requested_audience,
+            "requested_scope": requested_scope,
+        }
+        if context is not None:
+            body["context"] = context
+        response = self._make_request(
+            HTTPMethods.POST,
+            "/oauth/token-exchange",
+            data=body,
+        )
+        return TokenExchangeResponse(**response.json())

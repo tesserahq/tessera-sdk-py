@@ -41,7 +41,6 @@ async def test_authorize_requires_auth_header():
     with pytest.raises(HTTPException) as exc:
         await dependency(request)
 
-    print(exc.value)
     assert exc.value.status_code == 401
 
 

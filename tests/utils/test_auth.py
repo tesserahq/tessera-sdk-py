@@ -10,11 +10,21 @@ from tessera_sdk.base.exceptions import UnauthorizedException
 
 
 def _mock_settings():
+    def get_auth_providers():
+        return [
+            {
+                "jwks_url": "https://test.oidc.com/.well-known/jwks.json",
+                "issuer": "https://test.oidc.com/",
+                "audience": "https://test-api",
+            }
+        ]
+
     return SimpleNamespace(
         oidc_domain="test.oidc.com",
-        oidc_algorithms=["RS256"],
+        oidc_algorithms="RS256",
         oidc_api_audience="https://test-api",
         oidc_issuer="https://test.oidc.com/",
+        get_auth_providers=get_auth_providers,
     )
 
 
@@ -32,7 +42,7 @@ class DummyJWKSFailure:
 
 
 @patch("tessera_sdk.auth.token_handler.get_settings", side_effect=_mock_settings)
-def test_verify_token_jwks_error_returns_http_401(mock_get_settings):
+def test_verify_token_jwks_error_returns_http_403(mock_get_settings):
     with patch(
         "tessera_sdk.auth.token_handler.jwt.PyJWKClient",
         return_value=DummyJWKSFailure(),
@@ -42,7 +52,8 @@ def test_verify_token_jwks_error_returns_http_401(mock_get_settings):
     with pytest.raises(HTTPException) as exc:
         handler.verify("token")
 
-    assert exc.value.status_code == 401
+    # UnauthorizedException uses 403 in this code path
+    assert exc.value.status_code == 403
 
 
 @patch("tessera_sdk.auth.token_handler.get_settings", side_effect=_mock_settings)

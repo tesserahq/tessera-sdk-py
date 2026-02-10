@@ -105,5 +105,4 @@ class DatabaseManager:
             session.rollback()
             raise
         finally:
-            print("closing db session")
             session.close()

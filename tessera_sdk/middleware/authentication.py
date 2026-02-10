@@ -81,7 +81,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
             try:
                 # User not in cache or cache was invalid, check database
-                user = user_service.get_user_by_external_id(external_user_id)
+                user = user_service.get_user_by_id_or_external_id(external_user_id)
             finally:
                 if hasattr(user_service, "db"):
                     user_service.db.close()
