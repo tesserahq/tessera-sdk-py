@@ -13,8 +13,8 @@ class UserResponse(BaseModel):
     email: Optional[EmailStr] = None
     """User's email address. Must be a valid email format."""
 
-    username: Optional[str] = None
-    """User's unique username. Can be used for login or display."""
+    preferred_name: Optional[str] = None
+    """User's preferred name. Can be used for display."""
 
     avatar_url: Optional[str] = None
     """URL to the user's profile picture or avatar. Returns avatar_asset_id if present, otherwise avatar_url."""
