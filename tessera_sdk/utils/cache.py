@@ -45,7 +45,11 @@ class Cache:
             Cached value if found, None otherwise
         """
         cache_key = self._get_cache_key(key)
-        cached_value = self.redis_client.get(cache_key)
+        try:
+            cached_value = self.redis_client.get(cache_key)
+        except ConnectionError as e:
+            logger.warning(f"Redis connection failed during read: {e}")
+            return None
 
         if cached_value is not None:
             logger.debug(f"Cache hit for key: {key}")
@@ -70,7 +74,12 @@ class Cache:
         serialized_value = self._serialize_value(value)
         ttl = ttl or self.default_ttl
 
-        success = self.redis_client.setex(cache_key, ttl, serialized_value)
+        try:
+            success = self.redis_client.setex(cache_key, ttl, serialized_value)
+        except ConnectionError as e:
+            logger.warning(f"Redis connection failed during write: {e}")
+            return False
+
         if success:
             logger.debug(f"Cached key {key} with TTL {ttl}s")
         return success
