@@ -39,6 +39,7 @@ USER_ATTRS_KEYS = frozenset(
         "avatar_url",
         "first_name",
         "last_name",
+        "preferred_name",
         "provider",
         "confirmed_at",
         "verified",
@@ -61,7 +62,7 @@ class UserMixin:
     Provides:
         - id, email, external_id as regular columns
         - attributes JSONB column for avatar_url, first_name, last_name,
-          provider, confirmed_at, verified, verified_at, service_account
+          preferred_name, provider, confirmed_at, verified, verified_at, service_account
         - hybrid_property accessors for query and instance use
         - full_name() helper
     """
@@ -119,6 +120,18 @@ class UserMixin:
     @last_name.expression
     def last_name(cls):
         return cls.attributes["last_name"].astext
+
+    @hybrid_property
+    def preferred_name(self):
+        return self._get_attr("preferred_name")
+
+    @preferred_name.setter
+    def preferred_name(self, value):
+        self._set_attr("preferred_name", value)
+
+    @preferred_name.expression
+    def preferred_name(cls):
+        return cls.attributes["preferred_name"].astext
 
     @hybrid_property
     def provider(self):

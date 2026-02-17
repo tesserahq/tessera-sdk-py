@@ -44,23 +44,15 @@ class Cache:
         Returns:
             Cached value if found, None otherwise
         """
-        try:
-            cache_key = self._get_cache_key(key)
-            cached_value = self.redis_client.get(cache_key)
+        cache_key = self._get_cache_key(key)
+        cached_value = self.redis_client.get(cache_key)
 
-            if cached_value is not None:
-                logger.debug(f"Cache hit for key: {key}")
-                return self._deserialize_value(cached_value)
+        if cached_value is not None:
+            logger.debug(f"Cache hit for key: {key}")
+            return self._deserialize_value(cached_value)
 
-            logger.debug(f"Cache miss for key: {key}")
-            return None
-
-        except ConnectionError as e:
-            logger.warning(f"Redis connection error while reading key {key}: {e}")
-            return None
-        except Exception as e:
-            logger.error(f"Error reading key {key} from cache: {e}")
-            return None
+        logger.debug(f"Cache miss for key: {key}")
+        return None
 
     def write(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
         """
@@ -74,22 +66,14 @@ class Cache:
         Returns:
             True if successful, False otherwise
         """
-        try:
-            cache_key = self._get_cache_key(key)
-            serialized_value = self._serialize_value(value)
-            ttl = ttl or self.default_ttl
+        cache_key = self._get_cache_key(key)
+        serialized_value = self._serialize_value(value)
+        ttl = ttl or self.default_ttl
 
-            success = self.redis_client.setex(cache_key, ttl, serialized_value)
-            if success:
-                logger.debug(f"Cached key {key} with TTL {ttl}s")
-            return success
-
-        except ConnectionError as e:
-            logger.warning(f"Redis connection error while writing key {key}: {e}")
-            return False
-        except Exception as e:
-            logger.error(f"Error writing key {key} to cache: {e}")
-            return False
+        success = self.redis_client.setex(cache_key, ttl, serialized_value)
+        if success:
+            logger.debug(f"Cached key {key} with TTL {ttl}s")
+        return success
 
     def delete(self, key: str) -> bool:
         """
@@ -101,19 +85,11 @@ class Cache:
         Returns:
             True if successful, False otherwise
         """
-        try:
-            cache_key = self._get_cache_key(key)
-            deleted = self.redis_client.delete(cache_key)
-            if deleted:
-                logger.debug(f"Deleted key {key} from cache")
-            return bool(deleted)
-
-        except ConnectionError as e:
-            logger.warning(f"Redis connection error while deleting key {key}: {e}")
-            return False
-        except Exception as e:
-            logger.error(f"Error deleting key {key} from cache: {e}")
-            return False
+        cache_key = self._get_cache_key(key)
+        deleted = self.redis_client.delete(cache_key)
+        if deleted:
+            logger.debug(f"Deleted key {key} from cache")
+        return bool(deleted)
 
     def clear_pattern(self, pattern: str) -> bool:
         """
@@ -125,25 +101,13 @@ class Cache:
         Returns:
             True if successful, False otherwise
         """
-        try:
-            full_pattern = f"{self.namespace}:{pattern}"
-            keys = self.redis_client.keys(full_pattern)
-            if keys:
-                deleted = self.redis_client.delete(*keys)
-                logger.info(
-                    f"Cleared {deleted} cache entries matching pattern: {pattern}"
-                )
-                return True
+        full_pattern = f"{self.namespace}:{pattern}"
+        keys = self.redis_client.keys(full_pattern)
+        if keys:
+            deleted = self.redis_client.delete(*keys)
+            logger.info(f"Cleared {deleted} cache entries matching pattern: {pattern}")
             return True
-
-        except ConnectionError as e:
-            logger.warning(
-                f"Redis connection error while clearing pattern {pattern}: {e}"
-            )
-            return False
-        except Exception as e:
-            logger.error(f"Error clearing pattern {pattern} from cache: {e}")
-            return False
+        return True
 
     def clear_all(self) -> bool:
         """
@@ -164,18 +128,8 @@ class Cache:
         Returns:
             True if key exists, False otherwise
         """
-        try:
-            cache_key = self._get_cache_key(key)
-            return bool(self.redis_client.exists(cache_key))
-
-        except ConnectionError as e:
-            logger.warning(
-                f"Redis connection error while checking existence of key {key}: {e}"
-            )
-            return False
-        except Exception as e:
-            logger.error(f"Error checking existence of key {key}: {e}")
-            return False
+        cache_key = self._get_cache_key(key)
+        return bool(self.redis_client.exists(cache_key))
 
     def ttl(self, key: str) -> Optional[int]:
         """
@@ -187,19 +141,9 @@ class Cache:
         Returns:
             Remaining TTL in seconds, -1 if no TTL, None if key doesn't exist
         """
-        try:
-            cache_key = self._get_cache_key(key)
-            ttl = self.redis_client.ttl(cache_key)
-            return ttl if ttl != -2 else None  # -2 means key doesn't exist
-
-        except ConnectionError as e:
-            logger.warning(
-                f"Redis connection error while getting TTL for key {key}: {e}"
-            )
-            return None
-        except Exception as e:
-            logger.error(f"Error getting TTL for key {key}: {e}")
-            return None
+        cache_key = self._get_cache_key(key)
+        ttl = self.redis_client.ttl(cache_key)
+        return ttl if ttl != -2 else None  # -2 means key doesn't exist
 
     def ping(self) -> bool:
         """
