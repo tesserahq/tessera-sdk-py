@@ -86,6 +86,16 @@ class IdentiesClient(BaseClient):
         response = self._make_request(HTTPMethods.GET, endpoint)
         return UserResponse(**response.json())
 
+    def get_me(self) -> UserResponse:
+        """
+        Get the currently authenticated user.
+
+        Returns:
+            UserResponse object
+        """
+        response = self._make_request(HTTPMethods.GET, "/me")
+        return UserResponse(**response.json())
+
     def get_internal_user(self, user_id: str) -> UserResponse:
         """
         Get an internal user.

@@ -64,6 +64,28 @@ def test_identies_introspect_uses_post():
     assert result.active is True
 
 
+def test_identies_get_me_returns_current_user():
+    user_id = uuid4()
+    payload = {
+        "id": str(user_id),
+        "email": "me@example.com",
+        "first_name": "Grace",
+        "last_name": "Hopper",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    client = IdentiesClient(base_url="https://identies.example.com")
+
+    with patch.object(
+        IdentiesClient, "_make_request", return_value=DummyResponse(payload)
+    ) as mock_request:
+        result = client.get_me()
+
+    mock_request.assert_called_once_with(HTTPMethods.GET, "/me")
+    assert result.id == user_id
+    assert result.email == "me@example.com"
+
+
 def test_identies_maps_auth_errors():
     client = IdentiesClient(base_url="https://identies.example.com")
 
