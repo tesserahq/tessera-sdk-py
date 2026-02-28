@@ -64,6 +64,11 @@ class Event(BaseModel):
         description="Project UUID associated with the event (extension attribute)",
     )
 
+    privy: Optional[bool] = Field(
+        default=False,
+        description="Whether the event is private (extension attribute)",
+    )
+
     @field_validator("source")
     @classmethod
     def validate_source(cls, v):
