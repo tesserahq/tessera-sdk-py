@@ -24,6 +24,7 @@ def _mock_settings():
         oidc_algorithms="RS256",
         oidc_api_audience="https://test-api",
         oidc_issuer="https://test.oidc.com/",
+        tesserasdk_auth_middleware_timeout=3,
         get_auth_providers=get_auth_providers,
     )
 

@@ -1,8 +1,36 @@
-from tessera_sdk.identies import IdentiesClient
-from tessera_sdk.config import get_settings
+from typing import Optional
+
 import logging
 
+from tessera_sdk.config import get_settings
+from tessera_sdk.identies import IdentiesClient
+
 logger = logging.getLogger(__name__)
+
+
+def _is_api_key(token: str) -> bool:
+    """Return True if the token looks like an API key (ak_<key_id>.<secret>)."""
+    return bool(token and token.startswith("ak_") and "." in token)
+
+
+def _get_bearer_token(headers) -> str | None:
+    """Extract Bearer token from Authorization header. Supports Mapping or Dict."""
+    auth = None
+    if hasattr(headers, "get"):
+        auth = headers.get("authorization") or headers.get("Authorization")
+    else:
+        if "authorization" in headers:
+            auth = headers["authorization"]
+        elif "Authorization" in headers:
+            auth = headers["Authorization"]
+        else:
+            auth = None
+    if not auth or not isinstance(auth, str):
+        return None
+    auth = auth.strip()
+    if auth.lower().startswith("bearer "):
+        return auth[7:].strip()
+    return None
 
 
 class APIKeyHandler:
@@ -30,9 +58,13 @@ class APIKeyHandler:
             else:
                 api_key = None
 
-        if not api_key or not isinstance(api_key, str) or not api_key.strip():
-            return False
-        return True
+        if api_key and isinstance(api_key, str) and api_key.strip():
+            return True
+
+        bearer = _get_bearer_token(headers)
+        if bearer and _is_api_key(bearer):
+            return True
+        return False
 
     def get_api_key(self, headers) -> str:
         """
@@ -53,9 +85,13 @@ class APIKeyHandler:
             else:
                 api_key = ""
 
-        if not api_key or not isinstance(api_key, str) or not api_key.strip():
-            return ""
-        return api_key.strip()
+        if api_key and isinstance(api_key, str) and api_key.strip():
+            return api_key.strip()
+
+        bearer = _get_bearer_token(headers)
+        if bearer and _is_api_key(bearer):
+            return bearer
+        return ""
 
     def validate(self, api_key: str):
         """
@@ -71,8 +107,10 @@ class APIKeyHandler:
         if not api_key:
             return False
 
-        # Set the API key in the client for this request
-        self.identies_client.session.headers.update({"X-API-Key": api_key})
+        # Set the API key as Bearer; Identies introspect accepts JWT or API key in Bearer
+        self.identies_client.session.headers.update(
+            {"Authorization": f"Bearer {api_key}"}
+        )
 
         # Call introspect to validate the API key
         introspect_response = self.identies_client.introspect()
@@ -82,9 +120,9 @@ class APIKeyHandler:
                 f"X-API-Key validated successfully for user: {introspect_response.user_id}"
             )
 
-            # Remove the X-API-Key from client headers after validation
-            if "X-API-Key" in self.identies_client.session.headers:
-                del self.identies_client.session.headers["X-API-Key"]
+            # Remove the Bearer header after validation
+            if "Authorization" in self.identies_client.session.headers:
+                del self.identies_client.session.headers["Authorization"]
 
             return introspect_response.user
         else:
