@@ -58,7 +58,6 @@ class BaseClient:
 
         # Create or use provided session
         self.session = session or requests.Session()
-        logger.info(f"Timeout: {self.timeout}")
 
         # Set default headers
         self.session.headers.update(
@@ -160,10 +159,10 @@ class BaseClient:
                     detail = error_data.get("detail", "Bad request")
                 except (ValueError, KeyError):
                     detail = "Bad request"
-                raise TesseraValidationError(f"[{class_name}] {detail}")
+                raise TesseraValidationError(f"[{class_name}]: {endpoint}: {detail}")
             elif 400 <= response.status_code < 500:
                 raise TesseraClientError(
-                    f"[{class_name}] Client error: {response.status_code}",
+                    f"[{class_name}] Client error: {response.status_code} {response.text}",
                     response.status_code,
                 )
             elif 500 <= response.status_code < 600:
