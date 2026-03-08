@@ -4,6 +4,9 @@ from typing import TYPE_CHECKING, Optional
 from tessera_sdk.config import get_settings
 from tessera_sdk.base.exceptions import UnauthorizedException
 from tessera_sdk.identies import IdentiesClient
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _is_api_key(token: str) -> bool:
@@ -77,6 +80,7 @@ class TokenHandler:
             issuer = provider.get("issuer")
             audience = provider.get("audience")
             try:
+                logger.info(f"Verifying JWT with provider: {provider['jwks_url']}")
                 signing_key = (
                     provider["jwks_client"].get_signing_key_from_jwt(token).key
                 )
