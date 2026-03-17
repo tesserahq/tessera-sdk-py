@@ -151,11 +151,10 @@ def test_quore_maps_validation_errors():
 
 def test_sendly_create_email_uses_payload():
     request = CreateEmailRequest(
-        name="Welcome",
-        project_id="tenant-1",
+        project_id="7ffd064b-27c0-4a87-8065-46af46852db8",
         from_email="noreply@example.com",
         subject="Welcome!",
-        html="<p>Hello</p>",
+        html="<p>Hello ${name}!</p>",
         to=["user@example.com"],
         template_variables={"name": "Ada"},
     )
@@ -163,11 +162,11 @@ def test_sendly_create_email_uses_payload():
         "from_email": "noreply@example.com",
         "to_email": "user@example.com",
         "subject": "Welcome!",
-        "body": "<p>Hello</p>",
+        "body": "<p>Hello Ada!</p>",
         "status": "sent",
         "provider": "provider-1",
         "provider_message_id": "message-1",
-        "project_id": "tenant-1",
+        "project_id": "7ffd064b-27c0-4a87-8065-46af46852db8",
         "id": "email-1",
     }
     client = SendlyClient(base_url="https://sendly.example.com")
