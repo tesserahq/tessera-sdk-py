@@ -83,6 +83,6 @@ class SendlyClient(BaseClient):
         endpoint = "/emails"
 
         response = self._make_request(
-            HTTPMethods.POST, endpoint, data=request.model_dump()
+            HTTPMethods.POST, endpoint, data=request.model_dump(mode="json")
         )
         return CreateEmailResponse(**response.json())
