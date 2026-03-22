@@ -9,6 +9,7 @@ from .clients.quore import QuoreClient
 from .clients.vaulta import VaultaClient
 from .clients.sendly import SendlyClient
 from .clients.custos import CustosClient
+from .clients.looply import LooplyClient
 from .clients._base.exceptions import (
     TesseraError,
     TesseraClientError,
@@ -26,6 +27,7 @@ __all__ = [
     "VaultaClient",
     "SendlyClient",
     "CustosClient",
+    "LooplyClient",
     "TesseraError",
     "TesseraClientError",
     "TesseraServerError",

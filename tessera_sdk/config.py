@@ -24,6 +24,10 @@ class Settings(BaseSettings):
         default="https://sendly.tessera.com",
         json_schema_extra={"env": "SENDLY_API_URL"},
     )
+    looply_api_url: str = Field(
+        default="https://looply.tessera.com",
+        json_schema_extra={"env": "LOOPLY_API_URL"},
+    )
     authorization_cache_enabled: bool = Field(
         default=False,
         json_schema_extra={"env": "AUTHORIZATION_CACHE_ENABLED"},
