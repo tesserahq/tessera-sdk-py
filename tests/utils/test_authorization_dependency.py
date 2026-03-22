@@ -4,15 +4,15 @@ from unittest.mock import Mock, patch
 import pytest
 from fastapi import HTTPException
 
-from tessera_sdk.base.exceptions import (
+from tessera_sdk.clients._base.exceptions import (
     TesseraAuthenticationError,
     TesseraValidationError,
     TesseraClientError,
     TesseraServerError,
     TesseraError,
 )
-from tessera_sdk.utils import authorization_dependency
-from tessera_sdk.utils.authorization_dependency import authorize
+from tessera_sdk.server.dependencies import authorization as authorization_dependency
+from tessera_sdk.server.dependencies.authorization import authorize
 
 
 class DummyAuthorizeResponse:
@@ -75,11 +75,11 @@ async def test_authorize_uses_user_id_attribute():
 
     with (
         patch(
-            "tessera_sdk.utils.authorization_dependency.get_settings",
+            "tessera_sdk.server.dependencies.authorization.get_settings",
             return_value=settings,
         ),
         patch(
-            "tessera_sdk.utils.authorization_dependency.CustosClient.authorize",
+            "tessera_sdk.server.dependencies.authorization.CustosClient.authorize",
             return_value=DummyAuthorizeResponse(True),
         ),
     ):
@@ -105,7 +105,7 @@ async def test_authorize_domain_resolver_error():
     )
 
     with patch(
-        "tessera_sdk.utils.authorization_dependency.get_settings",
+        "tessera_sdk.server.dependencies.authorization.get_settings",
         return_value=settings,
     ):
         dependency = authorize("read", "resource", resolve_domain)
@@ -133,15 +133,15 @@ async def test_authorize_cache_hit_allows():
 
     with (
         patch(
-            "tessera_sdk.utils.authorization_dependency.get_settings",
+            "tessera_sdk.server.dependencies.authorization.get_settings",
             return_value=settings,
         ),
         patch(
-            "tessera_sdk.utils.authorization_dependency._get_authorization_cache",
+            "tessera_sdk.server.dependencies.authorization._get_authorization_cache",
             return_value=cache,
         ),
         patch(
-            "tessera_sdk.utils.authorization_dependency.CustosClient.authorize",
+            "tessera_sdk.server.dependencies.authorization.CustosClient.authorize",
         ) as mock_authorize,
     ):
         dependency = authorize("read", "resource", resolve_domain)
@@ -170,11 +170,11 @@ async def test_authorize_cache_hit_denies():
 
     with (
         patch(
-            "tessera_sdk.utils.authorization_dependency.get_settings",
+            "tessera_sdk.server.dependencies.authorization.get_settings",
             return_value=settings,
         ),
         patch(
-            "tessera_sdk.utils.authorization_dependency._get_authorization_cache",
+            "tessera_sdk.server.dependencies.authorization._get_authorization_cache",
             return_value=cache,
         ),
     ):
@@ -205,15 +205,15 @@ async def test_authorize_denied_writes_cache():
 
     with (
         patch(
-            "tessera_sdk.utils.authorization_dependency.get_settings",
+            "tessera_sdk.server.dependencies.authorization.get_settings",
             return_value=settings,
         ),
         patch(
-            "tessera_sdk.utils.authorization_dependency._get_authorization_cache",
+            "tessera_sdk.server.dependencies.authorization._get_authorization_cache",
             return_value=cache,
         ),
         patch(
-            "tessera_sdk.utils.authorization_dependency.CustosClient.authorize",
+            "tessera_sdk.server.dependencies.authorization.CustosClient.authorize",
             return_value=DummyAuthorizeResponse(False),
         ),
     ):
@@ -245,15 +245,15 @@ async def test_authorize_allowed_writes_cache():
 
     with (
         patch(
-            "tessera_sdk.utils.authorization_dependency.get_settings",
+            "tessera_sdk.server.dependencies.authorization.get_settings",
             return_value=settings,
         ),
         patch(
-            "tessera_sdk.utils.authorization_dependency._get_authorization_cache",
+            "tessera_sdk.server.dependencies.authorization._get_authorization_cache",
             return_value=cache,
         ),
         patch(
-            "tessera_sdk.utils.authorization_dependency.CustosClient.authorize",
+            "tessera_sdk.server.dependencies.authorization.CustosClient.authorize",
             return_value=DummyAuthorizeResponse(True),
         ),
     ):
@@ -291,11 +291,11 @@ async def test_authorize_maps_custos_errors(error, status_code):
 
     with (
         patch(
-            "tessera_sdk.utils.authorization_dependency.get_settings",
+            "tessera_sdk.server.dependencies.authorization.get_settings",
             return_value=settings,
         ),
         patch(
-            "tessera_sdk.utils.authorization_dependency.CustosClient.authorize",
+            "tessera_sdk.server.dependencies.authorization.CustosClient.authorize",
             side_effect=error,
         ),
     ):
@@ -312,7 +312,7 @@ def test_get_authorization_cache_disabled():
     settings = SimpleNamespace(authorization_cache_enabled=False)
 
     with patch(
-        "tessera_sdk.utils.authorization_dependency.get_settings",
+        "tessera_sdk.server.dependencies.authorization.get_settings",
         return_value=settings,
     ):
         assert authorization_dependency._get_authorization_cache() is None
@@ -325,11 +325,11 @@ def test_get_authorization_cache_enabled_creates_cache():
 
     with (
         patch(
-            "tessera_sdk.utils.authorization_dependency.get_settings",
+            "tessera_sdk.server.dependencies.authorization.get_settings",
             return_value=settings,
         ),
         patch(
-            "tessera_sdk.utils.authorization_dependency.Cache",
+            "tessera_sdk.server.dependencies.authorization.Cache",
             return_value=cache_instance,
         ),
     ):

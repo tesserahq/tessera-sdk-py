@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tessera_sdk.events.event import Event, event_source, event_type
+from tessera_sdk.infra.events.event import Event, event_source, event_type
 
 
 def test_event_validates_required_fields():
@@ -35,7 +35,7 @@ def test_event_time_without_timezone():
 
 def test_event_helpers_use_settings(monkeypatch):
     settings = SimpleNamespace(event_type_prefix="com.test", event_source_prefix="src")
-    monkeypatch.setattr("tessera_sdk.events.event.get_settings", lambda: settings)
+    monkeypatch.setattr("tessera_sdk.infra.events.event.get_settings", lambda: settings)
 
     assert event_type("account.created") == "com.test.account.created"
     assert event_source("/accounts/1") == "/src/accounts/1"
@@ -43,7 +43,7 @@ def test_event_helpers_use_settings(monkeypatch):
 
 def test_event_helpers_use_settings_without_source(monkeypatch):
     settings = SimpleNamespace(event_type_prefix="com.test", event_source_prefix="src")
-    monkeypatch.setattr("tessera_sdk.events.event.get_settings", lambda: settings)
+    monkeypatch.setattr("tessera_sdk.infra.events.event.get_settings", lambda: settings)
 
     assert event_type("account.created") == "com.test.account.created"
     assert event_source() == "/src"

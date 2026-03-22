@@ -4,17 +4,17 @@ from unittest.mock import patch
 
 import pytest
 
-from tessera_sdk.base.exceptions import (
+from tessera_sdk.clients._base.exceptions import (
     TesseraAuthenticationError,
     TesseraValidationError,
 )
 from tessera_sdk.constants import HTTPMethods
-from tessera_sdk.custos import CustosClient
-from tessera_sdk.identies import IdentiesClient
-from tessera_sdk.quore import QuoreClient
-from tessera_sdk.sendly import SendlyClient
-from tessera_sdk.sendly.schemas import CreateEmailRequest
-from tessera_sdk.vaulta import VaultaClient
+from tessera_sdk.clients.custos import CustosClient
+from tessera_sdk.clients.identies import IdentiesClient
+from tessera_sdk.clients.quore import QuoreClient
+from tessera_sdk.clients.sendly import SendlyClient
+from tessera_sdk.clients.sendly.schemas import CreateEmailRequest
+from tessera_sdk.clients.vaulta import VaultaClient
 
 
 class DummyResponse:
@@ -179,7 +179,7 @@ def test_sendly_create_email_uses_payload():
     mock_request.assert_called_once_with(
         HTTPMethods.POST,
         "/emails",
-        data=request.model_dump(),
+        data=request.model_dump(mode="json"),
     )
     assert result.status == "sent"
 

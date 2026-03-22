@@ -2,12 +2,12 @@ import pytest
 from unittest.mock import Mock, patch
 import json
 
-from tessera_sdk.utils.cache import Cache
+from tessera_sdk.infra.cache import Cache
 
 
 @pytest.fixture
 def mock_redis():
-    with patch("tessera_sdk.utils.cache.Redis") as mock_redis_class:
+    with patch("tessera_sdk.infra.cache.Redis") as mock_redis_class:
         mock_redis_instance = Mock()
         mock_redis_class.return_value = mock_redis_instance
         yield mock_redis_instance
@@ -235,7 +235,7 @@ def test_ping_failure(cache, mock_redis):
 
 def test_create_cache_function():
     """Test the convenience function to create cache instances."""
-    from tessera_sdk.utils.cache import create_cache
+    from tessera_sdk.infra.cache import create_cache
 
     cache = create_cache("custom")
     assert cache.namespace == "custom"
