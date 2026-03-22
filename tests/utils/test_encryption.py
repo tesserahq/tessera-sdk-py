@@ -1,6 +1,6 @@
 import pytest
 
-from tessera_sdk.utils import encryption
+from tessera_sdk.infra import encryption
 
 
 def test_get_encryption_key_requires_env(monkeypatch):

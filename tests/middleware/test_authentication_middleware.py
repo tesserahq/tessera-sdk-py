@@ -7,7 +7,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from tessera_sdk.middleware.authentication import AuthenticationMiddleware
+from tessera_sdk.server.middleware.authentication import AuthenticationMiddleware
 
 
 def _build_app(user_service_factory=None):
@@ -65,7 +65,7 @@ def test_auth_middleware_allows_valid_bearer():
     client = TestClient(app)
 
     with patch(
-        "tessera_sdk.middleware.authentication.TokenHandler.verify",
+        "tessera_sdk.server.middleware.authentication.TokenHandler.verify",
         return_value={"sub": "ext-1"},
     ):
         response = client.get("/protected", headers={"Authorization": "Bearer token"})
@@ -79,7 +79,7 @@ def test_auth_middleware_rejects_invalid_bearer():
     client = TestClient(app)
 
     with patch(
-        "tessera_sdk.middleware.authentication.TokenHandler.verify",
+        "tessera_sdk.server.middleware.authentication.TokenHandler.verify",
         side_effect=HTTPException(status_code=401, detail="Invalid"),
     ):
         response = client.get("/protected", headers={"Authorization": "Bearer token"})
@@ -95,7 +95,7 @@ def test_auth_middleware_accepts_api_key():
     introspect = SimpleNamespace(active=True, user={"id": "user-2"}, user_id="user-2")
 
     with patch(
-        "tessera_sdk.auth.api_key_handler.IdentiesClient",
+        "tessera_sdk.server.auth.api_key_handler.IdentiesClient",
     ) as mock_identies_cls:
         mock_instance = mock_identies_cls.return_value
         mock_instance.introspect.return_value = introspect
@@ -112,7 +112,7 @@ def test_auth_middleware_rejects_inactive_api_key():
     introspect = SimpleNamespace(active=False, user=None, user_id=None)
 
     with patch(
-        "tessera_sdk.auth.api_key_handler.IdentiesClient",
+        "tessera_sdk.server.auth.api_key_handler.IdentiesClient",
     ) as mock_identies_cls:
         mock_instance = mock_identies_cls.return_value
         mock_instance.introspect.return_value = introspect

@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from tessera_sdk.fastapi import get_livez_readyz_router
+from tessera_sdk.server.health import get_livez_readyz_router
 
 
 def test_livez_returns_200_and_ok():

@@ -9,9 +9,9 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from tessera_sdk.identies.schemas.user_response import UserResponse
-from tessera_sdk.middleware.user_onboarding import UserOnboardingMiddleware
-from tessera_sdk.schemas.user import UserNeedsOnboarding
+from tessera_sdk.clients.identies.schemas.user_response import UserResponse
+from tessera_sdk.server.middleware.user_onboarding import UserOnboardingMiddleware
+from tessera_sdk.domain.schemas.user import UserNeedsOnboarding
 
 
 class SetUserMiddleware(BaseHTTPMiddleware):
@@ -54,7 +54,7 @@ def test_onboarding_skips_without_user():
     client = TestClient(app)
 
     with patch(
-        "tessera_sdk.middleware.user_onboarding.get_settings",
+        "tessera_sdk.server.middleware.user_onboarding.get_settings",
         return_value=SimpleNamespace(identies_api_url="https://identies.example.com"),
     ):
         response = client.get("/protected")
@@ -69,7 +69,7 @@ def test_onboarding_passes_existing_user():
     client = TestClient(app)
 
     with patch(
-        "tessera_sdk.middleware.user_onboarding.get_settings",
+        "tessera_sdk.server.middleware.user_onboarding.get_settings",
         return_value=SimpleNamespace(identies_api_url="https://identies.example.com"),
     ):
         response = client.get("/protected")
@@ -106,13 +106,13 @@ def test_onboarding_creates_user_when_needed():
 
     with (
         patch(
-            "tessera_sdk.middleware.user_onboarding.get_settings",
+            "tessera_sdk.server.middleware.user_onboarding.get_settings",
             return_value=SimpleNamespace(
                 identies_api_url="https://identies.example.com"
             ),
         ),
         patch(
-            "tessera_sdk.middleware.user_onboarding.IdentiesClient.userinfo",
+            "tessera_sdk.server.middleware.user_onboarding.IdentiesClient.userinfo",
             return_value=userinfo,
         ),
     ):
@@ -139,13 +139,13 @@ def test_onboarding_returns_error_when_onboard_fails():
 
     with (
         patch(
-            "tessera_sdk.middleware.user_onboarding.get_settings",
+            "tessera_sdk.server.middleware.user_onboarding.get_settings",
             return_value=SimpleNamespace(
                 identies_api_url="https://identies.example.com"
             ),
         ),
         patch(
-            "tessera_sdk.middleware.user_onboarding.IdentiesClient.userinfo",
+            "tessera_sdk.server.middleware.user_onboarding.IdentiesClient.userinfo",
             return_value=userinfo,
         ),
     ):
@@ -164,13 +164,13 @@ def test_onboarding_can_be_skipped_for_paths():
 
     with (
         patch(
-            "tessera_sdk.middleware.user_onboarding.get_settings",
+            "tessera_sdk.server.middleware.user_onboarding.get_settings",
             return_value=SimpleNamespace(
                 identies_api_url="https://identies.example.com"
             ),
         ),
         patch(
-            "tessera_sdk.middleware.user_onboarding.IdentiesClient.userinfo"
+            "tessera_sdk.server.middleware.user_onboarding.IdentiesClient.userinfo"
         ) as userinfo_mock,
     ):
         response = client.get("/skip", headers={"Authorization": "Bearer token"})

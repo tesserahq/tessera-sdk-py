@@ -5,8 +5,8 @@ import jwt
 import pytest
 from fastapi import HTTPException
 
-from tessera_sdk.auth.token_handler import TokenHandler
-from tessera_sdk.base.exceptions import UnauthorizedException
+from tessera_sdk.server.auth.token_handler import TokenHandler
+from tessera_sdk.server.exceptions import UnauthorizedException
 
 
 def _mock_settings():
@@ -42,10 +42,10 @@ class DummyJWKSFailure:
         raise jwt.exceptions.PyJWKClientError("bad key")
 
 
-@patch("tessera_sdk.auth.token_handler.get_settings", side_effect=_mock_settings)
+@patch("tessera_sdk.server.auth.token_handler.get_settings", side_effect=_mock_settings)
 def test_verify_token_jwks_error_returns_http_403(mock_get_settings):
     with patch(
-        "tessera_sdk.auth.token_handler.jwt.PyJWKClient",
+        "tessera_sdk.server.auth.token_handler.jwt.PyJWKClient",
         return_value=DummyJWKSFailure(),
     ):
         handler = TokenHandler()
@@ -57,15 +57,15 @@ def test_verify_token_jwks_error_returns_http_403(mock_get_settings):
     assert exc.value.status_code == 403
 
 
-@patch("tessera_sdk.auth.token_handler.get_settings", side_effect=_mock_settings)
+@patch("tessera_sdk.server.auth.token_handler.get_settings", side_effect=_mock_settings)
 def test_verify_token_decode_error_returns_unauthorized(mock_get_settings):
     with (
         patch(
-            "tessera_sdk.auth.token_handler.jwt.PyJWKClient",
+            "tessera_sdk.server.auth.token_handler.jwt.PyJWKClient",
             return_value=DummyJWKS(),
         ),
         patch(
-            "tessera_sdk.auth.token_handler.jwt.decode",
+            "tessera_sdk.server.auth.token_handler.jwt.decode",
             side_effect=Exception("bad"),
         ),
     ):
@@ -77,17 +77,17 @@ def test_verify_token_decode_error_returns_unauthorized(mock_get_settings):
     assert exc.value.status_code == 403
 
 
-@patch("tessera_sdk.auth.token_handler.get_settings", side_effect=_mock_settings)
+@patch("tessera_sdk.server.auth.token_handler.get_settings", side_effect=_mock_settings)
 def test_verify_token_returns_payload(mock_get_settings):
     payload = {"sub": "external-2"}
 
     with (
         patch(
-            "tessera_sdk.auth.token_handler.jwt.PyJWKClient",
+            "tessera_sdk.server.auth.token_handler.jwt.PyJWKClient",
             return_value=DummyJWKS(),
         ),
         patch(
-            "tessera_sdk.auth.token_handler.jwt.decode",
+            "tessera_sdk.server.auth.token_handler.jwt.decode",
             return_value=payload,
         ),
     ):

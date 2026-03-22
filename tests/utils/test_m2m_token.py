@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from tessera_sdk.utils.m2m_token import M2MTokenClient, M2MTokenResponse
+from tessera_sdk.infra.m2m_token import M2MTokenClient, M2MTokenResponse
 
 
 class DummyResponse:
@@ -35,7 +35,7 @@ def cache():
 
 def test_prepare_token_request_uses_settings(settings, cache):
     with patch(
-        "tessera_sdk.utils.m2m_token.get_settings",
+        "tessera_sdk.infra.m2m_token.get_settings",
         return_value=settings,
     ):
         client = M2MTokenClient(cache_service=cache)
@@ -51,7 +51,7 @@ def test_prepare_token_request_missing_credentials(settings, cache):
     settings.service_account_client_id = ""
     settings.service_account_client_secret = ""
     with patch(
-        "tessera_sdk.utils.m2m_token.get_settings",
+        "tessera_sdk.infra.m2m_token.get_settings",
         return_value=settings,
     ):
         client = M2MTokenClient(cache_service=cache)
@@ -61,7 +61,7 @@ def test_prepare_token_request_missing_credentials(settings, cache):
 
 def test_process_token_response_requires_fields(settings, cache):
     with patch(
-        "tessera_sdk.utils.m2m_token.get_settings",
+        "tessera_sdk.infra.m2m_token.get_settings",
         return_value=settings,
     ):
         client = M2MTokenClient(cache_service=cache)
@@ -71,7 +71,7 @@ def test_process_token_response_requires_fields(settings, cache):
 
 def test_request_token_resets_timeout(settings, cache):
     with patch(
-        "tessera_sdk.utils.m2m_token.get_settings",
+        "tessera_sdk.infra.m2m_token.get_settings",
         return_value=settings,
     ):
         client = M2MTokenClient(cache_service=cache)
@@ -102,7 +102,7 @@ async def test_get_token_returns_cached(settings, cache):
     cache.read.return_value = json.dumps(cached.model_dump())
 
     with patch(
-        "tessera_sdk.utils.m2m_token.get_settings",
+        "tessera_sdk.infra.m2m_token.get_settings",
         return_value=settings,
     ):
         client = M2MTokenClient(cache_service=cache)
@@ -116,7 +116,7 @@ async def test_get_token_force_refresh(settings, cache):
     token = M2MTokenResponse(access_token="fresh", token_type="Bearer", expires_in=60)
 
     with patch(
-        "tessera_sdk.utils.m2m_token.get_settings",
+        "tessera_sdk.infra.m2m_token.get_settings",
         return_value=settings,
     ):
         client = M2MTokenClient(cache_service=cache)
@@ -134,7 +134,7 @@ async def test_get_token_force_refresh(settings, cache):
 
 def test_cache_token_writes_with_ttl(settings, cache):
     with patch(
-        "tessera_sdk.utils.m2m_token.get_settings",
+        "tessera_sdk.infra.m2m_token.get_settings",
         return_value=settings,
     ):
         client = M2MTokenClient(cache_service=cache, cache_buffer_seconds=10)
@@ -149,7 +149,7 @@ def test_cache_token_writes_with_ttl(settings, cache):
 
 def test_clear_cache(settings, cache):
     with patch(
-        "tessera_sdk.utils.m2m_token.get_settings",
+        "tessera_sdk.infra.m2m_token.get_settings",
         return_value=settings,
     ):
         client = M2MTokenClient(cache_service=cache)
@@ -166,7 +166,7 @@ async def test_get_token_missing_provider_domain(cache):
     )
 
     with patch(
-        "tessera_sdk.utils.m2m_token.get_settings",
+        "tessera_sdk.infra.m2m_token.get_settings",
         return_value=settings,
     ):
         with pytest.raises(ValueError):

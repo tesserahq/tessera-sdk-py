@@ -1,6 +1,6 @@
 import pytest
 
-from tessera_sdk.utils.expressions.engine import ExpressionEngine
+from tessera_sdk.infra.expressions.engine import ExpressionEngine
 
 
 @pytest.fixture

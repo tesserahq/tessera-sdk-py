@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from tessera_sdk.events.event import Event
-from tessera_sdk.events.nats_router import NatsEventPublisher
+from tessera_sdk.infra.events.event import Event
+from tessera_sdk.infra.events.nats_router import NatsEventPublisher
 
 
 @pytest.fixture
@@ -29,10 +29,10 @@ def test_publish_sync_uses_asyncio_run_when_no_loop(event):
 
     with (
         patch(
-            "tessera_sdk.events.nats_router.asyncio.get_running_loop",
+            "tessera_sdk.infra.events.nats_router.asyncio.get_running_loop",
             side_effect=RuntimeError,
         ),
-        patch("tessera_sdk.events.nats_router.asyncio.run") as mock_run,
+        patch("tessera_sdk.infra.events.nats_router.asyncio.run") as mock_run,
     ):
         publisher.publish_sync(event, subject="topic")
 
@@ -55,9 +55,10 @@ async def test_publish_internal_retries_on_incorrect_state(event):
 
     with (
         patch(
-            "tessera_sdk.events.nats_router.nats_router", SimpleNamespace(broker=broker)
+            "tessera_sdk.infra.events.nats_router.nats_router",
+            SimpleNamespace(broker=broker),
         ),
-        patch("tessera_sdk.events.nats_router.IncorrectState", Exception),
+        patch("tessera_sdk.infra.events.nats_router.IncorrectState", Exception),
     ):
         await publisher._publish_internal(event, subject="topic", close_after=True)
 
@@ -69,7 +70,7 @@ async def test_publish_internal_noop_when_disabled(event):
     publisher = NatsEventPublisher()
     publisher._enabled = False
 
-    with patch("tessera_sdk.events.nats_router.nats_router") as mock_router:
+    with patch("tessera_sdk.infra.events.nats_router.nats_router") as mock_router:
         await publisher._publish_internal(event, subject="topic", close_after=False)
 
     mock_router.broker.publish.assert_not_called()
@@ -87,9 +88,10 @@ async def test_ensure_connection_handles_incorrect_state():
 
     with (
         patch(
-            "tessera_sdk.events.nats_router.nats_router", SimpleNamespace(broker=broker)
+            "tessera_sdk.infra.events.nats_router.nats_router",
+            SimpleNamespace(broker=broker),
         ),
-        patch("tessera_sdk.events.nats_router.IncorrectState", Exception),
+        patch("tessera_sdk.infra.events.nats_router.IncorrectState", Exception),
     ):
         await publisher._ensure_connection_ready()
 
@@ -105,9 +107,10 @@ async def test_reset_connection_ignores_incorrect_state():
 
     with (
         patch(
-            "tessera_sdk.events.nats_router.nats_router", SimpleNamespace(broker=broker)
+            "tessera_sdk.infra.events.nats_router.nats_router",
+            SimpleNamespace(broker=broker),
         ),
-        patch("tessera_sdk.events.nats_router.IncorrectState", Exception),
+        patch("tessera_sdk.infra.events.nats_router.IncorrectState", Exception),
     ):
         await publisher._reset_connection()
 
