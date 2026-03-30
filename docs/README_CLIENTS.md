@@ -34,10 +34,12 @@ All clients inherit from `BaseClient` which provides:
 
 ```python
 from tessera_sdk import IdentiesClient
+from tessera_sdk.infra import AuthTokenProvider
 
+token = AuthTokenProvider().get_token()
 client = IdentiesClient(
     base_url="https://identies-api.yourdomain.com",
-    api_token="your-api-token"
+    api_token=token,
 )
 
 # Get user information
@@ -48,6 +50,9 @@ print(f"User: {user_info.first_name} {user_info.last_name}")
 result = client.introspect()
 print(f"Token active: {result.active}")
 ```
+
+`AuthTokenProvider` resolves a token by using `IDENTIES_API_KEY` when present, and
+falls back to Auth0 M2M token retrieval when not configured.
 
 ### Available Methods
 
