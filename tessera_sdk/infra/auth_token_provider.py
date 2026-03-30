@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from typing import Optional
 
 from ..config import Settings, get_settings
@@ -26,11 +25,9 @@ class AuthTokenProvider:
 
     def get_token(self) -> str:
         """
-        Return `IDENTIES_API_KEY` when configured, otherwise fetch M2M token.
+        Return `IDENTIES_SYSTEM_ACCOUNT_API_KEY` when configured, otherwise fetch M2M token.
         """
-        env_token = getattr(self.settings, "identies_api_key", None) or os.getenv(
-            "IDENTIES_API_KEY", ""
-        )
+        env_token = self.settings.identies_system_account_api_key
         if env_token and isinstance(env_token, str):
             stripped_token = env_token.strip()
             if stripped_token:

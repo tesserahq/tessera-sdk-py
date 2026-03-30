@@ -51,7 +51,7 @@ result = client.introspect()
 print(f"Token active: {result.active}")
 ```
 
-`AuthTokenProvider` resolves a token by using `IDENTIES_API_KEY` when present, and
+`AuthTokenProvider` resolves a token by using `IDENTIES_SYSTEM_ACCOUNT_API_KEY` when present, and
 falls back to Auth0 M2M token retrieval when not configured.
 
 ### Available Methods
