@@ -10,6 +10,7 @@
 The `tessera_sdk` root currently mixes two unrelated concerns: external API clients (`identies/`, `custos/`, `vaulta/`, `sendly/`, `quore/`) sit as top-level siblings of infrastructure (`core/`, `utils/`), server middleware (`middleware/`, `auth/`, `fastapi/`), and domain types (`models/`, `schemas/`). There is no structural signal about what layer something belongs to or what it depends on.
 
 Specific symptoms:
+
 - Opening `tessera_sdk/` gives no information about which modules are for callers vs. internal plumbing.
 - `utils/` is a grab-bag that mixes server-side request handling (`auth.py`, `authorization_dependency.py`) with infrastructure adapters (`cache.py`, `encryption.py`, `m2m_token.py`) and a template engine (`expressions/`).
 - `auth/` handlers (`TokenHandler`, `APIKeyHandler`) instantiate `IdentiesClient` internally, making them untestable without HTTP and creating a hidden upward dependency.
@@ -123,20 +124,20 @@ from .schemas import CreateEmailRequest, CreateEmailResponse
 # BEFORE
 from tessera_sdk.middleware.authentication import AuthenticationMiddleware
 from tessera_sdk.middleware.user_onboarding import UserOnboardingMiddleware
-from tessera_sdk.utils.auth import get_current_user
+from tessera_sdk.server.dependencies.auth import get_current_user
 from tessera_sdk.utils.authorization_dependency import authorize
 from tessera_sdk.fastapi.health import get_livez_readyz_router
 from tessera_sdk.core.database_manager import DatabaseManager
 from tessera_sdk.utils.service_factory import ServiceFactory
 from tessera_sdk.utils.cache import Cache
-from tessera_sdk.events.event import Event, event_type, event_source
-from tessera_sdk.events.nats_router import NatsEventPublisher
+from tessera_sdk.infra.events.event import Event, event_type, event_source
+from tessera_sdk.infra.events.nats_router import NatsEventPublisher
 from tessera_sdk.models import UserMixin
 from tessera_sdk.sendly.schemas.create_email_request import CreateEmailRequest
 
 # AFTER
 from tessera_sdk import AuthenticationMiddleware, UserOnboardingMiddleware
-from tessera_sdk import get_current_user, authorize, get_livez_readyz_router
+from tessera_sdk.server.dependencies.auth import get_current_user, authorize, get_livez_readyz_router
 from tessera_sdk import DatabaseManager, ServiceFactory
 from tessera_sdk.infra import Cache
 from tessera_sdk.infra.events import Event, event_type, event_source, NatsEventPublisher
@@ -170,6 +171,7 @@ These are independent of Phase 1 but discovered during the audit. They can land 
 `TesseraError`, `TesseraClientError`, etc. are pure Python exceptions but `base/exceptions.py` currently imports `fastapi.HTTPException` to define `UnauthorizedException` and `UnauthenticatedException`. This pulls FastAPI into the client layer import chain, breaking the goal of framework-agnostic clients.
 
 **Fix:** Split the file.
+
 - Pure `TesseraError` hierarchy → `clients/_base/exceptions.py`
 - `UnauthorizedException`, `UnauthenticatedException` → `server/exceptions.py`
 
@@ -243,6 +245,7 @@ No layer may import from a layer above it. `server/` is the only layer that impo
 ## Files Affected
 
 ### Moved (no content changes)
+
 - `base/` → `clients/_base/`
 - `identies/`, `custos/`, `vaulta/`, `sendly/`, `quore/` → `clients/`
 - `auth/` → `server/auth/`
@@ -263,17 +266,20 @@ No layer may import from a layer above it. `server/` is the only layer that impo
 - `constants/` → `clients/_base/constants/` (or keep at root — low priority)
 
 ### Modified (content changes)
+
 - `tessera_sdk/__init__.py` — new top-level re-exports
 - All internal relative imports updated to reflect new paths
 - `base/exceptions.py` → split into `clients/_base/exceptions.py` + `server/exceptions.py` (Phase 2)
 - `auth/token_handler.py`, `auth/api_key_handler.py` → accept `IntrospectPort` via constructor (Phase 2)
 
 ### Added (new files)
+
 - `clients/__init__.py`, `server/__init__.py`, `infra/__init__.py`, `domain/__init__.py`
 - `server/auth/protocols.py` (Phase 2)
 - Deprecation shims at all old paths
 
 ### Deleted (after deprecation period)
+
 - `base/`, `auth/`, `middleware/`, `fastapi/`, `core/`, `utils/`, `events/`, `models/`, `schemas/` (original locations)
 
 ---

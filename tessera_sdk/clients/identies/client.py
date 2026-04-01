@@ -15,6 +15,7 @@ from .schemas.external_account_response import (
     LinkTokenResponse,
 )
 from .schemas.introspect_response import IntrospectResponse
+from .schemas.oauth_token_response import OAuthTokenResponse
 from .schemas.token_exchange_response import TokenExchangeResponse
 from .schemas.user_response import UserResponse
 from ...config import get_settings
@@ -271,6 +272,38 @@ class IdentiesClient(BaseClient):
             HTTPMethods.DELETE,
             f"/external-accounts/{external_account_id}",
         )
+
+    def get_token(
+        self,
+        client_id: str,
+        client_secret: str,
+        audience: str,
+    ) -> OAuthTokenResponse:
+        """
+        Obtain an access token using the OAuth 2.0 client_credentials grant (POST /oauth/token).
+
+        Authenticates with ``client_id`` and ``client_secret`` in the request body;
+        the server does not require a Bearer token for this path.
+
+        Args:
+            client_id: Registered OAuth client id.
+            client_secret: Client secret.
+            audience: Target audience for the minted JWT (must be allowed by the server).
+
+        Returns:
+            OAuthTokenResponse with access_token, token_type, and expires_in.
+        """
+        response = self._make_request(
+            HTTPMethods.POST,
+            "/oauth/token",
+            data={
+                "grant_type": "client_credentials",
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "audience": audience,
+            },
+        )
+        return OAuthTokenResponse(**response.json())
 
     def exchange_token(
         self,

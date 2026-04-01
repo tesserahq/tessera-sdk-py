@@ -64,6 +64,38 @@ def test_identies_introspect_uses_post():
     assert result.active is True
 
 
+def test_identies_get_token_posts_oauth_token():
+    payload = {
+        "access_token": "jwt-here",
+        "token_type": "Bearer",
+        "expires_in": 900,
+    }
+    client = IdentiesClient(base_url="https://identies.example.com")
+
+    with patch.object(
+        IdentiesClient, "_make_request", return_value=DummyResponse(payload)
+    ) as mock_request:
+        result = client.get_token(
+            client_id="cid",
+            client_secret="secret",
+            audience="https://api.example.com",
+        )
+
+    mock_request.assert_called_once_with(
+        HTTPMethods.POST,
+        "/oauth/token",
+        data={
+            "grant_type": "client_credentials",
+            "client_id": "cid",
+            "client_secret": "secret",
+            "audience": "https://api.example.com",
+        },
+    )
+    assert result.access_token == "jwt-here"
+    assert result.token_type == "Bearer"
+    assert result.expires_in == 900
+
+
 def test_identies_get_me_returns_current_user():
     user_id = uuid4()
     payload = {

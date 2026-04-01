@@ -16,9 +16,17 @@ class Settings(BaseSettings):
         default="https://identies.tessera.com",
         json_schema_extra={"env": "IDENTIES_API_URL"},
     )
-    identies_system_account_api_key: str = Field(
+    identies_client_id: str = Field(
         default="",
-        json_schema_extra={"env": "IDENTIES_SYSTEM_ACCOUNT_API_KEY"},
+        json_schema_extra={"env": "IDENTIES_CLIENT_ID"},
+    )
+    identies_client_secret: str = Field(
+        default="",
+        json_schema_extra={"env": "IDENTIES_CLIENT_SECRET"},
+    )
+    identies_client_audience: str = Field(
+        default="https://identies.tessera.com",
+        json_schema_extra={"env": "IDENTIES_CLIENT_AUDIENCE"},
     )
     custos_api_url: str = Field(
         default="https://custos.tessera.com",
