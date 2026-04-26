@@ -16,7 +16,7 @@ pydantic = {extras = ["email"], version = "^2.12.4"}
 urllib3 = ">=1.26.0"
 starlette = ">=0.50.0"
 sqlalchemy = "^2.0.46"
-cryptography = "^46.0.4"
+cryptography = "^47.0.0"
 pydantic-settings = "^2.9.1"
 redis = ">=5.0.1,<8"
 faststream = {extras = ["nats"], version = "^0.6.6"}
@@ -24,7 +24,7 @@ jinja2 = "^3.1.6"
 
 opentelemetry-sdk = "^1.39.1"
 opentelemetry-instrumentation-sqlalchemy = "^0.60b1"
-fastapi = "^v0.135.1"
+fastapi = "^v0.136.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=7.0.0"
