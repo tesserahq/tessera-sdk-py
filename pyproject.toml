@@ -16,7 +16,7 @@ pydantic = {extras = ["email"], version = "^2.12.4"}
 urllib3 = ">=1.26.0"
 starlette = ">=0.50.0"
 sqlalchemy = "^2.0.46"
-cryptography = "^46.0.4"
+cryptography = "^47.0.0"
 pydantic-settings = "^2.9.1"
 redis = ">=5.0.1,<8"
 faststream = {extras = ["nats"], version = "^0.6.6"}
