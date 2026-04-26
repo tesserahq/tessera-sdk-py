@@ -44,6 +44,9 @@ class UserOnboard(BaseModel):
     service_account: Optional[bool] = None
     """Whether the user is a service account."""
 
+    provider: Optional[str] = None
+    """Authentication provider (e.g., 'google', 'github', etc.) if user signed up via OAuth."""
+
 
 class UserServiceInterface:
     """Interface for user service operations."""

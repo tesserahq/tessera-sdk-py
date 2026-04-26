@@ -228,7 +228,6 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
                 "verified": "verified",
                 "verified_at": "verified_at",
                 "service_account": "service_account",
-                "theme_preference": "theme_preference",
             }
 
             for response_field, user_field in field_mapping.items():
@@ -257,37 +256,4 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
             verified=userinfo_response.verified,
             verified_at=userinfo_response.verified_at,
             service_account=userinfo_response.service_account,
-            theme_preference=userinfo_response.theme_preference,
         )
-
-    def _extract_user_data_for_onboarding(self, user: Any) -> Dict[str, Any]:
-        """
-        Extract user data needed for onboarding from the user object.
-        """
-        return {
-            "external_id": getattr(user, "id", None),
-            "id": getattr(user, "id", None),
-            "email": getattr(user, "email", None),
-            "first_name": getattr(user, "first_name", ""),
-            "last_name": getattr(user, "last_name", ""),
-            "avatar_url": getattr(user, "avatar_url", None),
-            "preferred_name": getattr(user, "preferred_name", None),
-            "provider": getattr(user, "provider", None),
-            "verified": getattr(user, "verified", False),
-            "verified_at": getattr(user, "verified_at", None),
-            "service_account": getattr(user, "service_account", None),
-            "theme_preference": getattr(user, "theme_preference", "system"),
-        }
-
-    def _update_user_with_info(self, user: Any, userinfo: Dict[str, Any]) -> Any:
-        """
-        Update user object with additional information from userinfo.
-        This is a fallback method when no user service is available.
-        """
-        # Update user attributes with userinfo data
-        if hasattr(user, "__dict__"):
-            for key, value in userinfo.items():
-                if hasattr(user, key):
-                    setattr(user, key, value)
-
-        return user
