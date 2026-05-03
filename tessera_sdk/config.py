@@ -40,6 +40,10 @@ class Settings(BaseSettings):
         default="https://looply.tessera.com",
         json_schema_extra={"env": "LOOPLY_API_URL"},
     )
+    modela_api_url: str = Field(
+        default="https://modela.tessera.com",
+        json_schema_extra={"env": "MODELA_API_URL"},
+    )
     authorization_cache_enabled: bool = Field(
         default=False,
         json_schema_extra={"env": "AUTHORIZATION_CACHE_ENABLED"},

@@ -11,6 +11,8 @@ from tessera_sdk.clients._base.exceptions import (
 from tessera_sdk.constants import HTTPMethods
 from tessera_sdk.clients.custos import CustosClient
 from tessera_sdk.clients.identies import IdentiesClient
+from tessera_sdk.clients.modela import ModelaClient
+from tessera_sdk.clients.modela.schemas import CompletionMessage
 from tessera_sdk.clients.quore import QuoreClient
 from tessera_sdk.clients.sendly import SendlyClient
 from tessera_sdk.clients.sendly.schemas import CreateEmailRequest
@@ -339,3 +341,89 @@ def test_custos_maps_validation_errors():
                 resource="account",
                 domain="account:1",
             )
+
+
+# --- ModelaClient ---
+
+FAKE_COMPLETION_RESPONSE = {
+    "id": "chatcmpl-abc123",
+    "object": "chat.completion",
+    "created": 1234567890,
+    "model": "openai-gpt-4o",
+    "choices": [
+        {
+            "index": 0,
+            "message": {"role": "assistant", "content": "Hello!"},
+            "finish_reason": "stop",
+        }
+    ],
+    "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+}
+
+
+def test_modela_complete_posts_to_correct_endpoint():
+    client = ModelaClient(base_url="https://modela.example.com")
+    messages = [CompletionMessage(role="user", content="Hello")]
+
+    with patch.object(
+        ModelaClient,
+        "_make_request",
+        return_value=DummyResponse(FAKE_COMPLETION_RESPONSE),
+    ) as mock_request:
+        result = client.complete(messages=messages, model="openai-gpt-4o")
+
+    mock_request.assert_called_once_with(
+        HTTPMethods.POST,
+        "/chat/completions",
+        data={
+            "messages": [{"role": "user", "content": "Hello"}],
+            "model": "openai-gpt-4o",
+        },
+        params={"project_id": "*"},
+    )
+    assert result.id == "chatcmpl-abc123"
+    assert result.model == "openai-gpt-4o"
+    assert result.choices[0].message.content == "Hello!"
+    assert result.usage.total_tokens == 15
+
+
+def test_modela_complete_omits_model_when_not_provided():
+    client = ModelaClient(base_url="https://modela.example.com")
+    messages = [CompletionMessage(role="user", content="Hi")]
+
+    with patch.object(
+        ModelaClient,
+        "_make_request",
+        return_value=DummyResponse(FAKE_COMPLETION_RESPONSE),
+    ) as mock_request:
+        client.complete(messages=messages)
+
+    call_data = mock_request.call_args.kwargs["data"]
+    assert "model" not in call_data
+
+
+def test_modela_complete_passes_project_id_as_query_param():
+    client = ModelaClient(base_url="https://modela.example.com")
+    messages = [CompletionMessage(role="user", content="Hi")]
+
+    with patch.object(
+        ModelaClient,
+        "_make_request",
+        return_value=DummyResponse(FAKE_COMPLETION_RESPONSE),
+    ) as mock_request:
+        client.complete(messages=messages, project_id="proj-42")
+
+    assert mock_request.call_args.kwargs["params"] == {"project_id": "proj-42"}
+
+
+def test_modela_complete_raises_on_auth_error():
+    client = ModelaClient(base_url="https://modela.example.com")
+    messages = [CompletionMessage(role="user", content="Hi")]
+
+    with patch.object(
+        ModelaClient,
+        "_make_request",
+        side_effect=TesseraAuthenticationError("unauthorized"),
+    ):
+        with pytest.raises(TesseraAuthenticationError):
+            client.complete(messages=messages)

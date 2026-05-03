@@ -8,6 +8,7 @@ from .vaulta import VaultaClient
 from .sendly import SendlyClient
 from .quore import QuoreClient
 from .looply import LooplyClient
+from .modela import ModelaClient
 from ._base import (
     BaseClient,
     TesseraError,
@@ -25,6 +26,7 @@ __all__ = [
     "SendlyClient",
     "QuoreClient",
     "LooplyClient",
+    "ModelaClient",
     "BaseClient",
     "TesseraError",
     "TesseraClientError",
