@@ -108,7 +108,7 @@ class Event(BaseModel):
                 "id": "123e4567-e89b-12d3-a456-426614174000",
                 "source": "/api/accounts/123",
                 "spec_version": "1.0",
-                "type": "com.mylinden.family.account.created",
+                "type": "com.tessera.family.account.created",
                 "data_content_type": "application/json",
                 "time": "2024-01-15T10:30:00Z",
                 "data": {

@@ -85,6 +85,9 @@ class TokenHandler:
                     provider["jwks_client"].get_signing_key_from_jwt(token).key
                 )
             except jwt.exceptions.PyJWKClientError as error:
+                logger.error(
+                    f"Error verifying JWT with provider: {provider['jwks_url']} - {error}"
+                )
                 last_error = error
                 continue
             except jwt.exceptions.DecodeError as error:

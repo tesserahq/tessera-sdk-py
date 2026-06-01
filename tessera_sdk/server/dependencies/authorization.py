@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Callable, Awaitable, Optional
 from fastapi import Request, HTTPException, status
@@ -136,8 +137,10 @@ def authorize(
         custos_client = CustosClient(base_url=custos_api_url, api_token=auth_token)
 
         try:
-            # Call Custos authorization endpoint
-            response = custos_client.authorize(
+            # Run synchronous requests call in a thread so the event loop
+            # remains free to serve inbound requests (e.g. JWKS lookups from custos).
+            response = await asyncio.to_thread(
+                custos_client.authorize,
                 user_id=user_id,
                 action=action,
                 resource=resource,
