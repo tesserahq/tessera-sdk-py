@@ -19,18 +19,18 @@ sqlalchemy = "^2.0.46"
 cryptography = "^48.0.0"
 pydantic-settings = "^2.9.1"
 redis = ">=5.0.1,<8"
-faststream = {extras = ["nats"], version = "^0.6.6"}
+faststream = {extras = ["nats"], version = "^0.7.0"}
 jinja2 = "^3.1.6"
 
-opentelemetry-sdk = "^1.39.1"
-opentelemetry-instrumentation-sqlalchemy = "^0.60b1"
+opentelemetry-sdk = "^1.42.1"
+opentelemetry-instrumentation-sqlalchemy = "^0.63b1"
 fastapi = "^v0.136.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=7.0.0"
 pytest-cov = ">=4.0.0"
 black = "^26.0.0"
-ruff = "^0.15.0"
+ruff = "^0.15.16"
 isort = ">=5.0.0"
 mypy = ">=1.0.0"
 types-requests = ">=2.28.0"
