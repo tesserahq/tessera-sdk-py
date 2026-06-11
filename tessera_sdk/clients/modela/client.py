@@ -9,6 +9,9 @@ from .schemas.chat_completion_request import ChatCompletionRequest, CompletionMe
 from .schemas.chat_completion_response import ChatCompletionResponse
 from .schemas.scan_file_request import ScanFileRequest
 from .schemas.scan_response import ScanResponse
+from .schemas.summarize_file_request import SummarizeFileRequest
+from .schemas.summarize_response import SummarizeResponse
+from .schemas.summarize_text_request import SummarizeTextRequest
 
 logger = logging.getLogger(__name__)
 
@@ -71,3 +74,41 @@ class ModelaClient(BaseClient):
             params={"project_id": project_id},
         )
         return ScanResponse(**response.json())
+
+    def summarize_text(
+        self,
+        content: str,
+        model: Optional[str] = None,
+        project_id: str = "*",
+    ) -> SummarizeResponse:
+        request = SummarizeTextRequest(
+            content=content,
+            model=model,
+        )
+        response = self._make_request(
+            HTTPMethods.POST,
+            "/summarize/text",
+            data=request.model_dump(mode="json", exclude_none=True),
+            params={"project_id": project_id},
+        )
+        return SummarizeResponse(**response.json())
+
+    def summarize_file(
+        self,
+        file_url: str,
+        mime_type: Optional[str] = None,
+        model: Optional[str] = None,
+        project_id: str = "*",
+    ) -> SummarizeResponse:
+        request = SummarizeFileRequest(
+            file_url=file_url,
+            mime_type=mime_type,
+            model=model,
+        )
+        response = self._make_request(
+            HTTPMethods.POST,
+            "/summarize/file",
+            data=request.model_dump(mode="json", exclude_none=True),
+            params={"project_id": project_id},
+        )
+        return SummarizeResponse(**response.json())

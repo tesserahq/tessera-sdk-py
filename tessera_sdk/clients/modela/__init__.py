@@ -5,6 +5,9 @@ from .schemas import (
     CompletionMessage,
     ScanFileRequest,
     ScanResponse,
+    SummarizeFileRequest,
+    SummarizeResponse,
+    SummarizeTextRequest,
 )
 
 __all__ = [
@@ -14,4 +17,7 @@ __all__ = [
     "CompletionMessage",
     "ScanFileRequest",
     "ScanResponse",
+    "SummarizeFileRequest",
+    "SummarizeResponse",
+    "SummarizeTextRequest",
 ]

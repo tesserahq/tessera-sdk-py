@@ -6,6 +6,9 @@ from .chat_completion_response import (
 )
 from .scan_file_request import ScanFileRequest
 from .scan_response import ScanResponse
+from .summarize_file_request import SummarizeFileRequest
+from .summarize_response import SummarizeResponse
+from .summarize_text_request import SummarizeTextRequest
 
 __all__ = [
     "ChatCompletionRequest",
@@ -15,4 +18,7 @@ __all__ = [
     "CompletionUsage",
     "ScanFileRequest",
     "ScanResponse",
+    "SummarizeFileRequest",
+    "SummarizeResponse",
+    "SummarizeTextRequest",
 ]

@@ -499,3 +499,94 @@ def test_modela_scan_file_passes_project_id_as_query_param():
 
     assert mock_request.call_args.kwargs["params"] == {"project_id": "proj-42"}
     assert mock_request.call_args.kwargs["data"]["mime_type"] == "image/jpeg"
+
+
+FAKE_SUMMARIZE_RESPONSE = {
+    "summary": "This is a summary.",
+    "model": "default-summary",
+    "request_id": "req-xyz789",
+}
+
+
+def test_modela_summarize_text_posts_to_correct_endpoint():
+    client = ModelaClient(base_url="https://modela.example.com")
+
+    with patch.object(
+        ModelaClient,
+        "_make_request",
+        return_value=DummyResponse(FAKE_SUMMARIZE_RESPONSE),
+    ) as mock_request:
+        result = client.summarize_text(
+            content="A long document about something interesting.",
+            model="default-summary",
+        )
+
+    mock_request.assert_called_once_with(
+        HTTPMethods.POST,
+        "/summarize/text",
+        data={
+            "content": "A long document about something interesting.",
+            "model": "default-summary",
+        },
+        params={"project_id": "*"},
+    )
+    assert result.summary == "This is a summary."
+    assert result.model == "default-summary"
+    assert result.request_id == "req-xyz789"
+
+
+def test_modela_summarize_text_omits_model_when_not_provided():
+    client = ModelaClient(base_url="https://modela.example.com")
+
+    with patch.object(
+        ModelaClient,
+        "_make_request",
+        return_value=DummyResponse(FAKE_SUMMARIZE_RESPONSE),
+    ) as mock_request:
+        client.summarize_text(content="Some text.")
+
+    call_data = mock_request.call_args.kwargs["data"]
+    assert call_data == {"content": "Some text."}
+    assert "model" not in call_data
+
+
+def test_modela_summarize_file_posts_to_correct_endpoint():
+    client = ModelaClient(base_url="https://modela.example.com")
+
+    with patch.object(
+        ModelaClient,
+        "_make_request",
+        return_value=DummyResponse(FAKE_SUMMARIZE_RESPONSE),
+    ) as mock_request:
+        result = client.summarize_file(
+            file_url="https://example.com/doc.pdf",
+            model="default-summary",
+        )
+
+    mock_request.assert_called_once_with(
+        HTTPMethods.POST,
+        "/summarize/file",
+        data={
+            "file_url": "https://example.com/doc.pdf",
+            "model": "default-summary",
+        },
+        params={"project_id": "*"},
+    )
+    assert result.summary == "This is a summary."
+    assert result.model == "default-summary"
+
+
+def test_modela_summarize_file_omits_optional_fields_when_not_provided():
+    client = ModelaClient(base_url="https://modela.example.com")
+
+    with patch.object(
+        ModelaClient,
+        "_make_request",
+        return_value=DummyResponse(FAKE_SUMMARIZE_RESPONSE),
+    ) as mock_request:
+        client.summarize_file(file_url="https://example.com/doc.pdf")
+
+    call_data = mock_request.call_args.kwargs["data"]
+    assert call_data == {"file_url": "https://example.com/doc.pdf"}
+    assert "mime_type" not in call_data
+    assert "model" not in call_data
