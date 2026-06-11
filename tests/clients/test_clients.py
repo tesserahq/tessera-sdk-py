@@ -427,3 +427,75 @@ def test_modela_complete_raises_on_auth_error():
     ):
         with pytest.raises(TesseraAuthenticationError):
             client.complete(messages=messages)
+
+
+FAKE_SCAN_RESPONSE = {
+    "data": {
+        "full_name": "Jane Doe",
+        "document_number": "X1234567",
+        "date_of_birth": "1990-01-15",
+    },
+    "model": "default-scan",
+    "request_id": "req-abc123",
+}
+
+
+def test_modela_scan_file_posts_to_correct_endpoint():
+    client = ModelaClient(base_url="https://modela.example.com")
+
+    with patch.object(
+        ModelaClient,
+        "_make_request",
+        return_value=DummyResponse(FAKE_SCAN_RESPONSE),
+    ) as mock_request:
+        result = client.scan_file(
+            file_url="https://example.com/passport.pdf",
+            model="default-scan",
+        )
+
+    mock_request.assert_called_once_with(
+        HTTPMethods.POST,
+        "/scan/file",
+        data={
+            "file_url": "https://example.com/passport.pdf",
+            "model": "default-scan",
+        },
+        params={"project_id": "*"},
+    )
+    assert result.data["full_name"] == "Jane Doe"
+    assert result.model == "default-scan"
+    assert result.request_id == "req-abc123"
+
+
+def test_modela_scan_file_omits_optional_fields_when_not_provided():
+    client = ModelaClient(base_url="https://modela.example.com")
+
+    with patch.object(
+        ModelaClient,
+        "_make_request",
+        return_value=DummyResponse(FAKE_SCAN_RESPONSE),
+    ) as mock_request:
+        client.scan_file(file_url="https://example.com/passport.pdf")
+
+    call_data = mock_request.call_args.kwargs["data"]
+    assert call_data == {"file_url": "https://example.com/passport.pdf"}
+    assert "mime_type" not in call_data
+    assert "model" not in call_data
+
+
+def test_modela_scan_file_passes_project_id_as_query_param():
+    client = ModelaClient(base_url="https://modela.example.com")
+
+    with patch.object(
+        ModelaClient,
+        "_make_request",
+        return_value=DummyResponse(FAKE_SCAN_RESPONSE),
+    ) as mock_request:
+        client.scan_file(
+            file_url="https://example.com/id.jpg",
+            mime_type="image/jpeg",
+            project_id="proj-42",
+        )
+
+    assert mock_request.call_args.kwargs["params"] == {"project_id": "proj-42"}
+    assert mock_request.call_args.kwargs["data"]["mime_type"] == "image/jpeg"

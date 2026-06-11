@@ -7,6 +7,8 @@ from ...constants import HTTPMethods
 from ...config import get_settings
 from .schemas.chat_completion_request import ChatCompletionRequest, CompletionMessage
 from .schemas.chat_completion_response import ChatCompletionResponse
+from .schemas.scan_file_request import ScanFileRequest
+from .schemas.scan_response import ScanResponse
 
 logger = logging.getLogger(__name__)
 
@@ -49,3 +51,23 @@ class ModelaClient(BaseClient):
             params={"project_id": project_id},
         )
         return ChatCompletionResponse(**response.json())
+
+    def scan_file(
+        self,
+        file_url: str,
+        mime_type: Optional[str] = None,
+        model: Optional[str] = None,
+        project_id: str = "*",
+    ) -> ScanResponse:
+        request = ScanFileRequest(
+            file_url=file_url,
+            mime_type=mime_type,
+            model=model,
+        )
+        response = self._make_request(
+            HTTPMethods.POST,
+            "/scan/file",
+            data=request.model_dump(mode="json", exclude_none=True),
+            params={"project_id": project_id},
+        )
+        return ScanResponse(**response.json())

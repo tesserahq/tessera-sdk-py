@@ -4,6 +4,8 @@ from .chat_completion_response import (
     CompletionChoice,
     CompletionUsage,
 )
+from .scan_file_request import ScanFileRequest
+from .scan_response import ScanResponse
 
 __all__ = [
     "ChatCompletionRequest",
@@ -11,4 +13,6 @@ __all__ = [
     "ChatCompletionResponse",
     "CompletionChoice",
     "CompletionUsage",
+    "ScanFileRequest",
+    "ScanResponse",
 ]
