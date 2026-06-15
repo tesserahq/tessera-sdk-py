@@ -148,21 +148,32 @@ class BaseClient:
             if response.status_code < 400:
                 return response
             elif response.status_code == 401:
-                raise TesseraAuthenticationError(
-                    f"[{class_name}] Authentication failed"
-                )
+                try:
+                    detail = response.json().get("detail", "Authentication failed")
+                except (ValueError, KeyError):
+                    detail = "Authentication failed"
+                raise TesseraAuthenticationError(f"[{class_name}] {endpoint}: {detail}")
             elif response.status_code == 404:
-                raise TesseraNotFoundError(f"[{class_name}] Resource not found")
+                try:
+                    detail = response.json().get("detail", "Resource not found")
+                except (ValueError, KeyError):
+                    detail = "Resource not found"
+                raise TesseraNotFoundError(f"[{class_name}] {endpoint}: {detail}")
             elif response.status_code == 400:
                 try:
-                    error_data = response.json()
-                    detail = error_data.get("detail", "Bad request")
+                    detail = response.json().get("detail", "Bad request")
                 except (ValueError, KeyError):
                     detail = "Bad request"
-                raise TesseraValidationError(f"[{class_name}]: {endpoint}: {detail}")
+                raise TesseraValidationError(f"[{class_name}] {endpoint}: {detail}")
             elif 400 <= response.status_code < 500:
+                try:
+                    detail = response.json().get(
+                        "detail", response.text or "Client error"
+                    )
+                except (ValueError, KeyError):
+                    detail = response.text or "Client error"
                 raise TesseraClientError(
-                    f"[{class_name}] Client error: {response.status_code} {response.text}",
+                    f"[{class_name}] {endpoint}: {response.status_code} {detail}",
                     response.status_code,
                 )
             elif 500 <= response.status_code < 600:
@@ -190,4 +201,4 @@ class BaseClient:
                 method,
                 url,
             )
-            raise TesseraError(f"[{class_name}] Request failed") from e
+            raise TesseraError(f"[{class_name}] {method} {url} failed: {e}") from e
