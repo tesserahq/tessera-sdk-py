@@ -44,6 +44,9 @@ class CreateEmailRequest(BaseModel):
     template_id: Optional[str] = None
     """Template identifier for templated emails."""
 
+    template_alias: Optional[str] = None
+    """Template alias for templated emails."""
+
     template_variables: Dict[str, Any] = Field(default_factory=dict)
     """Variables to substitute in the email template."""
 
