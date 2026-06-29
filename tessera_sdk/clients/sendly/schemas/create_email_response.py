@@ -27,7 +27,7 @@ class CreateEmailResponse(BaseModel):
     provider_message_id: str
     """Provider's message identifier."""
 
-    project_id: str
+    project_id: Optional[str] = None
     """Project identifier."""
 
     id: str
