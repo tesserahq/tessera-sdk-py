@@ -44,7 +44,6 @@ class DatabaseManager:
             pool_recycle: Connection recycle time in seconds
             pool_use_lifo: Use LIFO for connection pool
             application_name: Application name for database connections
-            enable_otel: Enable OpenTelemetry instrumentation
         """
         self.database_url = database_url
         self.application_name = application_name
