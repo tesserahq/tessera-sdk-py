@@ -678,14 +678,14 @@ standard-no-fastapi-cloud-cli = ["email-validator (>=2.0.0)", "fastapi-cli[stand
 
 [[package]]
 name = "faststream"
-version = "0.7.1"
+version = "0.7.2"
 description = "FastStream: the simplest way to work with a messaging queues"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "faststream-0.7.1-py3-none-any.whl", hash = "sha256:d4f971f6ba7621a05a67a8fcb4436fdcf89b5f21b33eb107f193b1c9553738a0"},
-    {file = "faststream-0.7.1.tar.gz", hash = "sha256:11816dd4ca678f6b173159c456619993b09684b684abe4010366d6a0c8059c58"},
+    {file = "faststream-0.7.2-py3-none-any.whl", hash = "sha256:5c6130493855c57758d48a434f54cc887c734f5cba7b19632e323daf3bc516ea"},
+    {file = "faststream-0.7.2.tar.gz", hash = "sha256:ff03f3e8435f64e033f669bb52faf6731b2d87572d42cc0f6113dff1a46211d4"},
 ]
 
 [package.dependencies]
@@ -698,7 +698,7 @@ typing-extensions = ">=4.12.0"
 cli = ["typer (>=0.9,!=0.12,<=0.21.1)", "watchfiles (>=0.15.0,<1.2.0)"]
 confluent = ["confluent-kafka (>=2,!=2.8.1,<3) ; python_full_version < \"3.13.0\"", "confluent-kafka (>=2.6,!=2.8.1,<3) ; python_full_version >= \"3.13.0\""]
 kafka = ["aiokafka (>=0.9,<0.15)"]
-mqtt = ["zmqtt (>=0.0.4)"]
+mqtt = ["zmqtt (>=0.0.5)"]
 nats = ["nats-py (>=2.12.0,<=3.0.0)"]
 otel = ["opentelemetry-sdk (>=1.24.0,<2.0.0)"]
 prometheus = ["prometheus-client (>=0.20.0,<0.30.0)"]
