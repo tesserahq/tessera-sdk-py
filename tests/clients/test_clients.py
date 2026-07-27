@@ -15,7 +15,11 @@ from tessera_sdk.clients.modela import ModelaClient
 from tessera_sdk.clients.modela.schemas import CompletionMessage
 from tessera_sdk.clients.quore import QuoreClient
 from tessera_sdk.clients.sendly import SendlyClient
-from tessera_sdk.clients.sendly.schemas import CreateEmailRequest
+from tessera_sdk.clients.sendly.schemas import (
+    CreateEmailRequest,
+    SendBroadcastRequest,
+    BroadcastRecipient,
+)
 from tessera_sdk.clients.vaulta import VaultaClient
 
 
@@ -216,6 +220,111 @@ def test_sendly_create_email_uses_payload():
         data=request.model_dump(mode="json"),
     )
     assert result.status == "sent"
+
+
+def test_sendly_send_broadcast_uses_payload():
+    request = SendBroadcastRequest(
+        project_id="7ffd064b-27c0-4a87-8065-46af46852db8",
+        from_email="news@example.com",
+        subject="Hello ${first_name}",
+        html="<p>Hi ${first_name}</p>",
+        recipients=[
+            BroadcastRecipient(email="a@example.com", first_name="Alice"),
+            BroadcastRecipient(email="b@example.com", first_name="Bob"),
+        ],
+    )
+    payload = {
+        "batch_id": "b3f1c1d2-27c0-4a87-8065-46af46852db8",
+        "queued_count": 2,
+        "suppressed_count": 0,
+    }
+    client = SendlyClient(base_url="https://sendly.example.com")
+
+    with patch.object(
+        SendlyClient, "_make_request", return_value=DummyResponse(payload)
+    ) as mock_request:
+        result = client.send_broadcast(request)
+
+    mock_request.assert_called_once_with(
+        HTTPMethods.POST,
+        "/broadcasts/send",
+        data=request.model_dump(mode="json"),
+    )
+    assert result.batch_id == "b3f1c1d2-27c0-4a87-8065-46af46852db8"
+    assert result.queued_count == 2
+    assert result.suppressed_count == 0
+
+
+def test_sendly_send_broadcast_requires_at_least_one_recipient():
+    with pytest.raises(ValueError):
+        SendBroadcastRequest(
+            project_id="7ffd064b-27c0-4a87-8065-46af46852db8",
+            subject="Hello",
+            html="<p>Hi</p>",
+            recipients=[],
+        )
+
+
+def test_sendly_get_broadcast_returns_status():
+    payload = {
+        "batch_id": "b3f1c1d2-27c0-4a87-8065-46af46852db8",
+        "queued_count": 2,
+        "suppressed_count": 0,
+        "prepared_count": 2,
+        "finished": True,
+    }
+    client = SendlyClient(base_url="https://sendly.example.com")
+
+    with patch.object(
+        SendlyClient, "_make_request", return_value=DummyResponse(payload)
+    ) as mock_request:
+        result = client.get_broadcast("b3f1c1d2-27c0-4a87-8065-46af46852db8")
+
+    mock_request.assert_called_once_with(
+        HTTPMethods.GET,
+        "/broadcasts/b3f1c1d2-27c0-4a87-8065-46af46852db8",
+        params=None,
+    )
+    assert result.finished is True
+    assert result.prepared_count == 2
+
+
+def test_sendly_get_broadcast_passes_project_id_as_query_param():
+    payload = {
+        "batch_id": "b3f1c1d2-27c0-4a87-8065-46af46852db8",
+        "queued_count": 2,
+        "suppressed_count": 0,
+        "prepared_count": 0,
+        "finished": False,
+    }
+    client = SendlyClient(base_url="https://sendly.example.com")
+
+    with patch.object(
+        SendlyClient, "_make_request", return_value=DummyResponse(payload)
+    ) as mock_request:
+        client.get_broadcast(
+            "b3f1c1d2-27c0-4a87-8065-46af46852db8", project_id="proj-42"
+        )
+
+    mock_request.assert_called_once_with(
+        HTTPMethods.GET,
+        "/broadcasts/b3f1c1d2-27c0-4a87-8065-46af46852db8",
+        params={"project_id": "proj-42"},
+    )
+
+
+def test_sendly_get_broadcast_maps_not_found_errors():
+    from tessera_sdk.clients._base.exceptions import TesseraNotFoundError
+
+    client = SendlyClient(base_url="https://sendly.example.com")
+
+    with patch.object(
+        SendlyClient,
+        "_make_request",
+        side_effect=TesseraNotFoundError("not found"),
+    ):
+        with pytest.raises(TesseraNotFoundError):
+            client.get_broadcast("does-not-exist")
 
 
 def test_vaulta_get_asset_returns_response():

@@ -10,6 +10,9 @@ from .._base.client import BaseClient
 from ...constants import HTTPMethods
 from .schemas.create_email_request import CreateEmailRequest
 from .schemas.create_email_response import CreateEmailResponse
+from .schemas.send_broadcast_request import SendBroadcastRequest
+from .schemas.send_broadcast_response import SendBroadcastResponse
+from .schemas.get_broadcast_response import GetBroadcastResponse
 from ...config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -68,3 +71,53 @@ class SendlyClient(BaseClient):
             HTTPMethods.POST, endpoint, data=request.model_dump(mode="json")
         )
         return CreateEmailResponse(**response.json())
+
+    def send_broadcast(
+        self,
+        request: SendBroadcastRequest,
+    ) -> SendBroadcastResponse:
+        """
+        Fan a single piece of content out to a list of recipients.
+
+        Returns immediately with accept-time counts; rendering and sending
+        happen asynchronously. Use get_broadcast() to poll progress.
+
+        Args:
+            request: SendBroadcastRequest object containing the shared
+                content options and the recipient list
+
+        Returns:
+            SendBroadcastResponse containing the generated batch_id and
+            accept-time queued/suppressed counts
+        """
+        endpoint = "/broadcasts/send"
+
+        response = self._make_request(
+            HTTPMethods.POST, endpoint, data=request.model_dump(mode="json")
+        )
+        return SendBroadcastResponse(**response.json())
+
+    def get_broadcast(
+        self,
+        batch_id: str,
+        project_id: Optional[str] = None,
+    ) -> GetBroadcastResponse:
+        """
+        Get accept-time counts plus live prepare/send progress for one batch.
+
+        Args:
+            batch_id: The batch_id returned by send_broadcast()
+            project_id: Optional project scope for authorization. batch_id
+                is server-generated and globally unique, so this is not
+                required to locate the batch — omit it if you hold a
+                global/super-admin grant.
+
+        Returns:
+            GetBroadcastResponse containing the batch's current counts and
+            whether the send stage has finished for every recipient
+        """
+        endpoint = f"/broadcasts/{batch_id}"
+        params = {"project_id": project_id} if project_id else None
+
+        response = self._make_request(HTTPMethods.GET, endpoint, params=params)
+        return GetBroadcastResponse(**response.json())
