@@ -22,8 +22,9 @@ class SendBroadcastRequest(BaseModel):
     per-recipient meaning for a fan-out send.
     """
 
-    project_id: UUID
-    """Project identifier."""
+    project_id: Optional[UUID] = None
+    """Project identifier. Omit for a global (org-wide, not project-scoped)
+    broadcast — requires a "*"-domain/global grant on the caller's side."""
 
     from_email: Optional[EmailStr] = None
     """Sender email address. Falls back to the template's default if not provided."""
