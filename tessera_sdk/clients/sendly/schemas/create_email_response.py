@@ -36,6 +36,9 @@ class CreateEmailResponse(BaseModel):
     sent_at: Optional[datetime] = None
     """Timestamp when the email was sent."""
 
+    opened_at: Optional[datetime] = None
+    """Timestamp when the email was first opened, if ever."""
+
     error_message: Optional[str] = None
     """Error message if the email failed to send."""
 
