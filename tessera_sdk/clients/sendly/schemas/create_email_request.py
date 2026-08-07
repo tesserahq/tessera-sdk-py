@@ -20,6 +20,10 @@ class CreateEmailRequest(BaseModel):
     from_email: Optional[EmailStr] = None
     """Sender email address. Falls back to Sendly's configured default if not provided."""
 
+    reply_to: Optional[EmailStr] = None
+    """Reply-to address. Falls back to the template's reply_to if not provided and
+    sending via a template."""
+
     subject: str
     """Email subject line."""
 

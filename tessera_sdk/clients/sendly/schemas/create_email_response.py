@@ -9,6 +9,9 @@ class CreateEmailResponse(BaseModel):
     from_email: str
     """Sender email address."""
 
+    reply_to: Optional[str] = None
+    """Reply-to address actually used when sending, if any."""
+
     to_email: str
     """Recipient email address."""
 

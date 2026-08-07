@@ -191,6 +191,7 @@ def test_sendly_create_email_uses_payload():
     request = CreateEmailRequest(
         project_id="7ffd064b-27c0-4a87-8065-46af46852db8",
         from_email="noreply@example.com",
+        reply_to="support@example.com",
         subject="Welcome!",
         html="<p>Hello ${name}!</p>",
         to=["user@example.com"],
@@ -198,6 +199,7 @@ def test_sendly_create_email_uses_payload():
     )
     payload = {
         "from_email": "noreply@example.com",
+        "reply_to": "support@example.com",
         "to_email": "user@example.com",
         "subject": "Welcome!",
         "body": "<p>Hello Ada!</p>",
@@ -220,12 +222,14 @@ def test_sendly_create_email_uses_payload():
         data=request.model_dump(mode="json"),
     )
     assert result.status == "sent"
+    assert result.reply_to == "support@example.com"
 
 
 def test_sendly_send_broadcast_uses_payload():
     request = SendBroadcastRequest(
         project_id="7ffd064b-27c0-4a87-8065-46af46852db8",
         from_email="news@example.com",
+        reply_to="replies@example.com",
         subject="Hello ${first_name}",
         html="<p>Hi ${first_name}</p>",
         recipients=[

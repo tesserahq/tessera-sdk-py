@@ -29,6 +29,10 @@ class SendBroadcastRequest(BaseModel):
     from_email: Optional[EmailStr] = None
     """Sender email address. Falls back to the template's default if not provided."""
 
+    reply_to: Optional[EmailStr] = None
+    """Reply-to address. Falls back to the template's reply_to if not provided and
+    sending via a template."""
+
     subject: Optional[str] = None
     """Email subject line. Required unless using a template with its own subject."""
 
