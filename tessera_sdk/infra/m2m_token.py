@@ -204,9 +204,11 @@ class M2MTokenClient(BaseClient):
             if cached_token:
                 return cached_token
 
-        return await asyncio.to_thread(
+        token_response = await asyncio.to_thread(
             self._request_token, client_id, client_secret, audience, timeout
         )
+        self._cache_token(token_response, cache_key)
+        return token_response
 
     def get_token_sync(
         self,
@@ -214,15 +216,19 @@ class M2MTokenClient(BaseClient):
         client_secret: Optional[str] = None,
         audience: str = "",
         timeout: int = 30,
+        force_refresh: bool = False,
     ) -> M2MTokenResponse:
         """
         Synchronous version of get_token for use in non-async contexts.
+
+        Uses cached token from Redis if available and not expired. Set force_refresh=True to ignore cache.
 
         Args:
             client_id: The OAuth client ID (uses settings.service_account_client_id if not provided)
             client_secret: The OAuth client secret (uses settings.service_account_client_secret if not provided)
             audience: The API audience (identifier)
             timeout: Request timeout in seconds
+            force_refresh: If True, ignores cache and fetches a new token
 
         Returns:
             M2MTokenResponse containing the access token and metadata
@@ -233,7 +239,20 @@ class M2MTokenClient(BaseClient):
             TesseraError: For other unexpected failures
             ValueError: If the response is invalid or credentials are missing
         """
-        return self._request_token(client_id, client_secret, audience, timeout)
+        resolved_client_id = client_id or self.settings.service_account_client_id
+        resolved_audience = audience or self.settings.oidc_api_audience
+        cache_key = self._generate_cache_key(resolved_client_id, resolved_audience)
+
+        if not force_refresh:
+            cached_token = self._get_cached_token(cache_key)
+            if cached_token:
+                return cached_token
+
+        token_response = self._request_token(
+            client_id, client_secret, audience, timeout
+        )
+        self._cache_token(token_response, cache_key)
+        return token_response
 
     def _get_cached_token(self, cache_key: str) -> Optional[M2MTokenResponse]:
         """

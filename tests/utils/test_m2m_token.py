@@ -132,6 +132,80 @@ async def test_get_token_force_refresh(settings, cache):
     assert result.access_token == "fresh"
 
 
+@pytest.mark.anyio
+async def test_get_token_writes_to_cache_on_miss(settings, cache):
+    token = M2MTokenResponse(access_token="fresh", token_type="Bearer", expires_in=60)
+
+    with patch(
+        "tessera_sdk.infra.m2m_token.get_settings",
+        return_value=settings,
+    ):
+        client = M2MTokenClient(cache_service=cache)
+
+    with patch.object(client, "_request_token", return_value=token) as mock_request:
+        result = await client.get_token()
+
+    mock_request.assert_called_once()
+    assert result.access_token == "fresh"
+    cache.write.assert_called_once()
+
+
+def test_get_token_sync_returns_cached(settings, cache):
+    cached = M2MTokenResponse(
+        access_token="cached",
+        token_type="Bearer",
+        expires_in=60,
+    )
+    cache.read.return_value = json.dumps(cached.model_dump())
+
+    with patch(
+        "tessera_sdk.infra.m2m_token.get_settings",
+        return_value=settings,
+    ):
+        client = M2MTokenClient(cache_service=cache)
+
+    with patch.object(client, "_request_token") as mock_request:
+        result = client.get_token_sync()
+
+    mock_request.assert_not_called()
+    assert result.access_token == "cached"
+
+
+def test_get_token_sync_writes_to_cache_on_miss(settings, cache):
+    token = M2MTokenResponse(access_token="fresh", token_type="Bearer", expires_in=60)
+
+    with patch(
+        "tessera_sdk.infra.m2m_token.get_settings",
+        return_value=settings,
+    ):
+        client = M2MTokenClient(cache_service=cache)
+
+    with patch.object(client, "_request_token", return_value=token) as mock_request:
+        result = client.get_token_sync()
+
+    mock_request.assert_called_once()
+    assert result.access_token == "fresh"
+    cache.write.assert_called_once()
+
+
+def test_get_token_sync_force_refresh_bypasses_cache(settings, cache):
+    cached = M2MTokenResponse(access_token="cached", token_type="Bearer", expires_in=60)
+    cache.read.return_value = json.dumps(cached.model_dump())
+    fresh = M2MTokenResponse(access_token="fresh", token_type="Bearer", expires_in=60)
+
+    with patch(
+        "tessera_sdk.infra.m2m_token.get_settings",
+        return_value=settings,
+    ):
+        client = M2MTokenClient(cache_service=cache)
+
+    with patch.object(client, "_request_token", return_value=fresh) as mock_request:
+        result = client.get_token_sync(force_refresh=True)
+
+    mock_request.assert_called_once()
+    assert result.access_token == "fresh"
+
+
 def test_cache_token_writes_with_ttl(settings, cache):
     with patch(
         "tessera_sdk.infra.m2m_token.get_settings",
