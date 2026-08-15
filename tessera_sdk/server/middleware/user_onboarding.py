@@ -145,6 +145,16 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
         try:
             onboarded_user = user_service.onboard_user(user_data)
             return onboarded_user
+        except Exception as e:
+            # A failed onboard (e.g. the backing service refusing to create a
+            # duplicate/conflicting user record) must not silently fall through -
+            # surface it as a failure so the caller gets an explicit error instead
+            # of an inconsistent user record.
+            logger.error(
+                f"User onboarding rejected by user service for external_id: "
+                f"{external_id}: {e}"
+            )
+            return None
         finally:
             if hasattr(user_service, "db"):
                 user_service.db.close()
