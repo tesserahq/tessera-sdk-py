@@ -3,7 +3,7 @@ Main Sendly client for interacting with the Sendly API.
 """
 
 import logging
-from typing import Optional
+from typing import Any, Dict, Optional
 import requests
 
 from .._base.client import BaseClient
@@ -121,3 +121,43 @@ class SendlyClient(BaseClient):
 
         response = self._make_request(HTTPMethods.GET, endpoint, params=params)
         return GetBroadcastResponse(**response.json())
+
+    def list_emails(
+        self,
+        project_id: Optional[str] = None,
+        batch_id: Optional[str] = None,
+        tag: Optional[str] = None,
+        status: Optional[str] = None,
+        page: int = 1,
+        size: int = 50,
+    ) -> Dict[str, Any]:
+        """
+        List emails, optionally filtered by project, broadcast batch, tag,
+        or status (paginated).
+
+        For example, to find who opened a given broadcast:
+        list_emails(batch_id=batch_id, status="opened").
+
+        Args:
+            project_id: Optional project ID to filter emails by.
+            batch_id: Optional broadcast batch_id to filter emails by.
+            tag: Optional exact tag membership filter.
+            status: Optional email status filter (e.g. 'opened', 'delivered').
+            page: Page number (1-based).
+            size: Number of items per page.
+
+        Returns:
+            Paginated response dict with items and pagination metadata.
+        """
+        params = {
+            "project_id": project_id,
+            "batch_id": batch_id,
+            "tag": tag,
+            "status": status,
+            "page": page,
+            "size": size,
+        }
+        params = {key: value for key, value in params.items() if value is not None}
+
+        response = self._make_request(HTTPMethods.GET, "/emails", params=params)
+        return response.json()
