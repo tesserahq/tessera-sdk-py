@@ -276,6 +276,10 @@ def test_sendly_get_broadcast_returns_status():
         "suppressed_count": 0,
         "prepared_count": 2,
         "finished": True,
+        "delivered_count": 2,
+        "bounced_count": 0,
+        "complained_count": 0,
+        "opened_count": 1,
     }
     client = SendlyClient(base_url="https://sendly.example.com")
 
@@ -291,6 +295,10 @@ def test_sendly_get_broadcast_returns_status():
     )
     assert result.finished is True
     assert result.prepared_count == 2
+    assert result.delivered_count == 2
+    assert result.bounced_count == 0
+    assert result.complained_count == 0
+    assert result.opened_count == 1
 
 
 def test_sendly_get_broadcast_passes_project_id_as_query_param():
@@ -300,6 +308,10 @@ def test_sendly_get_broadcast_passes_project_id_as_query_param():
         "suppressed_count": 0,
         "prepared_count": 0,
         "finished": False,
+        "delivered_count": 0,
+        "bounced_count": 0,
+        "complained_count": 0,
+        "opened_count": 0,
     }
     client = SendlyClient(base_url="https://sendly.example.com")
 
@@ -329,6 +341,94 @@ def test_sendly_get_broadcast_maps_not_found_errors():
     ):
         with pytest.raises(TesseraNotFoundError):
             client.get_broadcast("does-not-exist")
+
+
+def test_sendly_list_emails_defaults_to_page_one():
+    payload = {
+        "items": [{"id": "email-1", "status": "opened"}],
+        "page": 1,
+        "size": 50,
+        "total": 1,
+        "pages": 1,
+    }
+    client = SendlyClient(base_url="https://sendly.example.com")
+
+    with patch.object(
+        SendlyClient, "_make_request", return_value=DummyResponse(payload)
+    ) as mock_request:
+        result = client.list_emails()
+
+    mock_request.assert_called_once_with(
+        HTTPMethods.GET,
+        "/emails",
+        params={"page": 1, "size": 50},
+    )
+    assert result == payload
+
+
+def test_sendly_list_emails_filters_by_batch_id_and_status():
+    payload = {"items": [], "page": 1, "size": 50, "total": 0, "pages": 0}
+    client = SendlyClient(base_url="https://sendly.example.com")
+
+    with patch.object(
+        SendlyClient, "_make_request", return_value=DummyResponse(payload)
+    ) as mock_request:
+        client.list_emails(
+            batch_id="b3f1c1d2-27c0-4a87-8065-46af46852db8", status="opened"
+        )
+
+    mock_request.assert_called_once_with(
+        HTTPMethods.GET,
+        "/emails",
+        params={
+            "batch_id": "b3f1c1d2-27c0-4a87-8065-46af46852db8",
+            "status": "opened",
+            "page": 1,
+            "size": 50,
+        },
+    )
+
+
+def test_sendly_list_emails_passes_all_filters_and_pagination():
+    payload = {"items": [], "page": 2, "size": 10, "total": 0, "pages": 0}
+    client = SendlyClient(base_url="https://sendly.example.com")
+
+    with patch.object(
+        SendlyClient, "_make_request", return_value=DummyResponse(payload)
+    ) as mock_request:
+        client.list_emails(
+            project_id="proj-42",
+            batch_id="batch-1",
+            tag="campaign-x",
+            status="delivered",
+            page=2,
+            size=10,
+        )
+
+    mock_request.assert_called_once_with(
+        HTTPMethods.GET,
+        "/emails",
+        params={
+            "project_id": "proj-42",
+            "batch_id": "batch-1",
+            "tag": "campaign-x",
+            "status": "delivered",
+            "page": 2,
+            "size": 10,
+        },
+    )
+
+
+def test_sendly_list_emails_maps_auth_errors():
+    client = SendlyClient(base_url="https://sendly.example.com")
+
+    with patch.object(
+        SendlyClient,
+        "_make_request",
+        side_effect=TesseraAuthenticationError("nope"),
+    ):
+        with pytest.raises(TesseraAuthenticationError):
+            client.list_emails()
 
 
 def test_vaulta_get_asset_returns_response():

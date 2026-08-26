@@ -19,3 +19,17 @@ class GetBroadcastResponse(BaseModel):
     finished: bool
     """True once the send stage has been attempted for every queued recipient.
     Does not track post-send webhook updates (opened/clicked/bounced, etc.)."""
+
+    delivered_count: int
+    """Number of recipient emails that have ever reached 'delivered' status."""
+
+    bounced_count: int
+    """Number of recipient emails that have ever reached 'bounced' status."""
+
+    complained_count: int
+    """Number of recipient emails that have ever reached 'complained' status."""
+
+    opened_count: int
+    """Number of recipient emails that have ever reached 'opened' status.
+    Approximate: a Click webhook arriving before its Open webhook for the
+    same email can skip past 'opened', causing a rare undercount."""
