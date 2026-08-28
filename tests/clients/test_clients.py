@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from uuid import uuid4
+from uuid import UUID, uuid4
 from unittest.mock import patch
 
 import pytest
@@ -269,6 +269,38 @@ def test_sendly_send_broadcast_requires_at_least_one_recipient():
         )
 
 
+def test_sendly_send_broadcast_includes_client_reference_id():
+    request = SendBroadcastRequest(
+        project_id="7ffd064b-27c0-4a87-8065-46af46852db8",
+        subject="Hello ${first_name}",
+        html="<p>Hi ${first_name}</p>",
+        recipients=[
+            BroadcastRecipient(
+                email="a@example.com",
+                first_name="Alice",
+                client_reference_id="9c3e0f2a-27c0-4a87-8065-46af46852db8",
+            ),
+        ],
+    )
+    payload = {
+        "batch_id": "b3f1c1d2-27c0-4a87-8065-46af46852db8",
+        "queued_count": 1,
+        "suppressed_count": 0,
+    }
+    client = SendlyClient(base_url="https://sendly.example.com")
+
+    with patch.object(
+        SendlyClient, "_make_request", return_value=DummyResponse(payload)
+    ) as mock_request:
+        client.send_broadcast(request)
+
+    sent_payload = mock_request.call_args.kwargs["data"]
+    assert (
+        sent_payload["recipients"][0]["client_reference_id"]
+        == "9c3e0f2a-27c0-4a87-8065-46af46852db8"
+    )
+
+
 def test_sendly_get_broadcast_returns_status():
     payload = {
         "batch_id": "b3f1c1d2-27c0-4a87-8065-46af46852db8",
@@ -280,6 +312,7 @@ def test_sendly_get_broadcast_returns_status():
         "bounced_count": 0,
         "complained_count": 0,
         "opened_count": 1,
+        "clicked_count": 1,
     }
     client = SendlyClient(base_url="https://sendly.example.com")
 
@@ -299,6 +332,7 @@ def test_sendly_get_broadcast_returns_status():
     assert result.bounced_count == 0
     assert result.complained_count == 0
     assert result.opened_count == 1
+    assert result.clicked_count == 1
 
 
 def test_sendly_get_broadcast_passes_project_id_as_query_param():
@@ -312,6 +346,7 @@ def test_sendly_get_broadcast_passes_project_id_as_query_param():
         "bounced_count": 0,
         "complained_count": 0,
         "opened_count": 0,
+        "clicked_count": 0,
     }
     client = SendlyClient(base_url="https://sendly.example.com")
 
@@ -429,6 +464,120 @@ def test_sendly_list_emails_maps_auth_errors():
     ):
         with pytest.raises(TesseraAuthenticationError):
             client.list_emails()
+
+
+def test_sendly_list_broadcast_recipients_defaults_to_page_one():
+    payload = {
+        "items": [
+            {
+                "id": "b6a1c1d2-27c0-4a87-8065-46af46852db8",
+                "client_reference_id": "9c3e0f2a-27c0-4a87-8065-46af46852db8",
+                "email": "a@example.com",
+                "suppressed": False,
+                "prepared": True,
+                "email_id": "e0f2c1d2-27c0-4a87-8065-46af46852db8",
+                "email_status": "delivered",
+                "opened_at": None,
+                "clicked_at": None,
+            }
+        ],
+        "page": 1,
+        "size": 50,
+        "total": 1,
+        "pages": 1,
+    }
+    client = SendlyClient(base_url="https://sendly.example.com")
+
+    with patch.object(
+        SendlyClient, "_make_request", return_value=DummyResponse(payload)
+    ) as mock_request:
+        result = client.list_broadcast_recipients(
+            "b3f1c1d2-27c0-4a87-8065-46af46852db8"
+        )
+
+    mock_request.assert_called_once_with(
+        HTTPMethods.GET,
+        "/broadcasts/b3f1c1d2-27c0-4a87-8065-46af46852db8/recipients",
+        params={"page": 1, "size": 50},
+    )
+    assert result.total == 1
+    assert result.items[0].email == "a@example.com"
+    assert result.items[0].client_reference_id == UUID(
+        "9c3e0f2a-27c0-4a87-8065-46af46852db8"
+    )
+    assert result.items[0].email_status == "delivered"
+    assert result.items[0].opened_at is None
+    assert result.items[0].clicked_at is None
+
+
+def test_sendly_list_broadcast_recipients_passes_project_id_and_pagination():
+    payload = {"items": [], "page": 2, "size": 10, "total": 0, "pages": 0}
+    client = SendlyClient(base_url="https://sendly.example.com")
+
+    with patch.object(
+        SendlyClient, "_make_request", return_value=DummyResponse(payload)
+    ) as mock_request:
+        client.list_broadcast_recipients(
+            "b3f1c1d2-27c0-4a87-8065-46af46852db8",
+            project_id="proj-42",
+            page=2,
+            size=10,
+        )
+
+    mock_request.assert_called_once_with(
+        HTTPMethods.GET,
+        "/broadcasts/b3f1c1d2-27c0-4a87-8065-46af46852db8/recipients",
+        params={"page": 2, "size": 10, "project_id": "proj-42"},
+    )
+
+
+def test_sendly_list_broadcast_recipients_shows_suppressed_recipient_as_null_email():
+    payload = {
+        "items": [
+            {
+                "id": "b6a1c1d2-27c0-4a87-8065-46af46852db8",
+                "client_reference_id": None,
+                "email": "suppressed@example.com",
+                "suppressed": True,
+                "prepared": False,
+                "email_id": None,
+                "email_status": None,
+                "opened_at": None,
+                "clicked_at": None,
+            }
+        ],
+        "page": 1,
+        "size": 50,
+        "total": 1,
+        "pages": 1,
+    }
+    client = SendlyClient(base_url="https://sendly.example.com")
+
+    with patch.object(
+        SendlyClient, "_make_request", return_value=DummyResponse(payload)
+    ):
+        result = client.list_broadcast_recipients(
+            "b3f1c1d2-27c0-4a87-8065-46af46852db8"
+        )
+
+    item = result.items[0]
+    assert item.suppressed is True
+    assert item.email_id is None
+    assert item.email_status is None
+
+
+def test_sendly_list_broadcast_recipients_maps_not_found_errors():
+    from tessera_sdk.clients._base.exceptions import TesseraNotFoundError
+
+    client = SendlyClient(base_url="https://sendly.example.com")
+
+    with patch.object(
+        SendlyClient,
+        "_make_request",
+        side_effect=TesseraNotFoundError("not found"),
+    ):
+        with pytest.raises(TesseraNotFoundError):
+            client.list_broadcast_recipients("does-not-exist")
 
 
 def test_vaulta_get_asset_returns_response():

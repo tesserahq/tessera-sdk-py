@@ -13,6 +13,7 @@ from .schemas.create_email_response import CreateEmailResponse
 from .schemas.send_broadcast_request import SendBroadcastRequest
 from .schemas.send_broadcast_response import SendBroadcastResponse
 from .schemas.get_broadcast_response import GetBroadcastResponse
+from .schemas.broadcast_recipient_result import BroadcastRecipientPageResponse
 from ...config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -121,6 +122,47 @@ class SendlyClient(BaseClient):
 
         response = self._make_request(HTTPMethods.GET, endpoint, params=params)
         return GetBroadcastResponse(**response.json())
+
+    def list_broadcast_recipients(
+        self,
+        batch_id: str,
+        project_id: Optional[str] = None,
+        page: int = 1,
+        size: int = 50,
+    ) -> BroadcastRecipientPageResponse:
+        """
+        Get paginated per-recipient results for one broadcast batch: each
+        recipient's submitted identity, suppression/preparation outcome,
+        resulting email (when one exists), and first-open/first-click
+        timestamps — in one request instead of an N+1 series of email
+        lookups.
+
+        Results are ordered by a stable tie-breaker server-side, so fetching
+        every page up to `.pages` visits each recipient exactly once. A
+        suppressed recipient or a preparation failure is still returned,
+        with email_id/email_status/opened_at/clicked_at all null — that
+        distinguishes those outcomes from "not yet prepared".
+
+        Args:
+            batch_id: The batch_id returned by send_broadcast()
+            project_id: Optional project scope for authorization. batch_id
+                is server-generated and globally unique, so this is not
+                required to locate the batch — omit it if you hold a
+                global/super-admin grant.
+            page: Page number (1-based).
+            size: Number of items per page.
+
+        Returns:
+            BroadcastRecipientPageResponse with items and pagination
+            metadata (total/page/size/pages)
+        """
+        endpoint = f"/broadcasts/{batch_id}/recipients"
+        params = {"page": page, "size": size}
+        if project_id:
+            params["project_id"] = project_id
+
+        response = self._make_request(HTTPMethods.GET, endpoint, params=params)
+        return BroadcastRecipientPageResponse(**response.json())
 
     def list_emails(
         self,
