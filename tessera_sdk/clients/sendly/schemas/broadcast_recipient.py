@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Any, Dict, Optional
+from uuid import UUID
 
 
 class BroadcastRecipient(BaseModel):
@@ -16,3 +17,9 @@ class BroadcastRecipient(BaseModel):
 
     attributes: Dict[str, Any] = Field(default_factory=dict)
     """Arbitrary per-recipient personalization data, merged into template_variables."""
+
+    client_reference_id: Optional[UUID] = None
+    """Optional caller-owned id for correlating this recipient with its
+    results later (see SendlyClient.list_broadcast_recipients) without
+    matching on the mutable email address. Must be unique within one
+    broadcast when supplied; reusing it in a different broadcast is fine."""

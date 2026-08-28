@@ -30,6 +30,11 @@ class GetBroadcastResponse(BaseModel):
     """Number of recipient emails that have ever reached 'complained' status."""
 
     opened_count: int
-    """Number of recipient emails that have ever reached 'opened' status.
-    Approximate: a Click webhook arriving before its Open webhook for the
-    same email can skip past 'opened', causing a rare undercount."""
+    """Exact count of recipient emails that have ever recorded a first-open
+    webhook, independent of the email's current status — unaffected by
+    out-of-order or duplicate webhook delivery."""
+
+    clicked_count: int
+    """Exact count of recipient emails that have ever recorded a first-click
+    webhook. Same first-occurrence semantics as opened_count: a recipient
+    with multiple clicked links, or a retried webhook, still counts once."""
