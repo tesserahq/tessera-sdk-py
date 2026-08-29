@@ -3,7 +3,7 @@ Main Sendly client for interacting with the Sendly API.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterator, Optional
 import requests
 
 from .._base.client import BaseClient
@@ -164,6 +164,47 @@ class SendlyClient(BaseClient):
         response = self._make_request(HTTPMethods.GET, endpoint, params=params)
         return BroadcastRecipientPageResponse(**response.json())
 
+    def iter_broadcast_recipients(
+        self,
+        batch_id: str,
+        project_id: Optional[str] = None,
+        size: int = 50,
+    ) -> Iterator[Any]:
+        """
+        Yield every recipient result for one broadcast batch, transparently
+        walking every page.
+
+        `list_broadcast_recipients()` returns a single page only — a batch
+        with more recipients than `size` requires the caller to loop over
+        `page`/`pages` itself. This does that looping, so a caller (e.g. an
+        engagement-polling task) can iterate the full result set without
+        reimplementing page traversal or risking silently processing only
+        the first page.
+
+        Args:
+            batch_id: The batch_id returned by send_broadcast()
+            project_id: Optional project scope, forwarded to each page
+                request. See list_broadcast_recipients() for details.
+            size: Page size to request internally.
+
+        Yields:
+            BroadcastRecipientResult, one per recipient, in the same stable
+            server-side order as list_broadcast_recipients().
+        """
+        page = 1
+        while True:
+            response = self.list_broadcast_recipients(
+                batch_id=batch_id,
+                project_id=project_id,
+                page=page,
+                size=size,
+            )
+            for item in response.items:
+                yield item
+            if page >= response.pages:
+                break
+            page += 1
+
     def list_emails(
         self,
         project_id: Optional[str] = None,
@@ -203,3 +244,51 @@ class SendlyClient(BaseClient):
 
         response = self._make_request(HTTPMethods.GET, "/emails", params=params)
         return response.json()
+
+    def iter_emails(
+        self,
+        project_id: Optional[str] = None,
+        batch_id: Optional[str] = None,
+        tag: Optional[str] = None,
+        status: Optional[str] = None,
+        size: int = 50,
+    ) -> Iterator[Dict[str, Any]]:
+        """
+        Yield every email matching the given filters, transparently walking
+        every page.
+
+        `list_emails()` returns a single page only (default size 50) — a
+        filter matching more emails than that silently truncates unless the
+        caller loops over `page`/`pages` itself. This does that looping, so
+        e.g. a broadcast with hundreds of recipients can be fully consumed
+        via `iter_emails(batch_id=batch_id)` without the caller having to
+        reimplement page traversal.
+
+        Args:
+            project_id: Optional project ID to filter emails by.
+            batch_id: Optional broadcast batch_id to filter emails by.
+            tag: Optional exact tag membership filter.
+            status: Optional email status filter (e.g. 'opened', 'delivered').
+            size: Page size to request internally.
+
+        Yields:
+            Each email as a dict, in the same order list_emails() returns
+            within a page.
+        """
+        page = 1
+        while True:
+            response = self.list_emails(
+                project_id=project_id,
+                batch_id=batch_id,
+                tag=tag,
+                status=status,
+                page=page,
+                size=size,
+            )
+            items = response.get("items", [])
+            for item in items:
+                yield item
+            total_pages = response.get("pages", 1)
+            if page >= total_pages:
+                break
+            page += 1
