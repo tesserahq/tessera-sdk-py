@@ -1,10 +1,23 @@
+import json
 import logging
+from collections.abc import AsyncIterator
 from typing import Any, Optional
+
+import httpx
 import requests
 
-from .._base.client import BaseClient
-from ...constants import HTTPMethods
 from ...config import get_settings
+from ...constants import HTTPMethods
+from .._base.client import BaseClient
+from .._base.exceptions import (
+    TesseraAuthenticationError,
+    TesseraClientError,
+    TesseraError,
+    TesseraNotFoundError,
+    TesseraServerError,
+    TesseraValidationError,
+)
+from .schemas.chat_completion_chunk import ChatCompletionChunk
 from .schemas.chat_completion_request import ChatCompletionRequest, CompletionMessage
 from .schemas.chat_completion_response import ChatCompletionResponse
 from .schemas.scan_file_request import ScanFileRequest
@@ -54,6 +67,94 @@ class ModelaClient(BaseClient):
             params={"project_id": project_id},
         )
         return ChatCompletionResponse(**response.json())
+
+    async def stream_complete(
+        self,
+        messages: list[CompletionMessage],
+        model: Optional[str] = None,
+        extra_body: Optional[dict[str, Any]] = None,
+        project_id: str = "*",
+    ) -> AsyncIterator[ChatCompletionChunk]:
+        """Stream a chat completion from Modela as parsed SSE chunks.
+
+        Uses httpx (async) rather than the sync `requests`-based `_make_request`,
+        since streaming a response body isn't supported by the shared BaseClient.
+        """
+        request = ChatCompletionRequest(
+            messages=messages,
+            model=model,
+            extra_body=extra_body,
+        )
+        payload = request.model_dump(mode="json", exclude_none=True)
+        payload["stream"] = True
+
+        headers = {"Content-Type": "application/json"}
+        if self.api_token:
+            headers["Authorization"] = f"Bearer {self.api_token}"
+
+        url = f"{self.base_url}/chat/completions"
+        logger.info(f"Making streaming POST request to {url}")
+
+        async with (
+            httpx.AsyncClient(timeout=self.timeout) as http_client,
+            http_client.stream(
+                "POST",
+                url,
+                json=payload,
+                params={"project_id": project_id},
+                headers=headers,
+            ) as response,
+        ):
+            await self._raise_for_streaming_status(response)
+            async for line in response.aiter_lines():
+                if not line or not line.startswith("data:"):
+                    continue
+                data = line[len("data:") :].strip()
+                if data == "[DONE]":
+                    break
+                try:
+                    chunk_payload = json.loads(data)
+                except ValueError as e:
+                    raise TesseraError(
+                        f"[{self.__class__.__name__}] /chat/completions: "
+                        f"received a malformed streaming chunk: {e}"
+                    ) from e
+                yield ChatCompletionChunk(**chunk_payload)
+
+    async def _raise_for_streaming_status(self, response: httpx.Response) -> None:
+        if response.status_code < 400:
+            return
+        await response.aread()
+        class_name = self.__class__.__name__
+        try:
+            detail = response.json().get("detail")
+        except (ValueError, KeyError, AttributeError):
+            detail = response.text
+        if response.status_code == 401:
+            raise TesseraAuthenticationError(
+                f"[{class_name}] /chat/completions: {detail or 'Authentication failed'}"
+            )
+        if response.status_code == 404:
+            raise TesseraNotFoundError(
+                f"[{class_name}] /chat/completions: {detail or 'Resource not found'}"
+            )
+        if response.status_code == 400:
+            raise TesseraValidationError(
+                f"[{class_name}] /chat/completions: {detail or 'Bad request'}"
+            )
+        if 400 <= response.status_code < 500:
+            raise TesseraClientError(
+                f"[{class_name}] /chat/completions: {response.status_code} {detail}",
+                response.status_code,
+            )
+        if 500 <= response.status_code < 600:
+            raise TesseraServerError(
+                f"[{class_name}] Server error: {response.status_code}",
+                response.status_code,
+            )
+        raise TesseraError(
+            f"[{class_name}] Unexpected status code: {response.status_code}"
+        )
 
     def scan_file(
         self,
