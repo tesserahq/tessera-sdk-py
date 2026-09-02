@@ -12,6 +12,7 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.11"
 requests = ">=2.25.0"
+httpx = "^0.28.1"
 pydantic = {extras = ["email"], version = "^2.12.4"}
 urllib3 = ">=1.26.0"
 starlette = ">=0.50.0"
@@ -34,7 +35,6 @@ ruff = "^0.16.0"
 isort = ">=5.0.0"
 mypy = ">=1.0.0"
 types-requests = ">=2.28.0"
-httpx = "^0.28.1"
 pyjwt = "^2.11.0"
 
 [tool.poetry.urls]

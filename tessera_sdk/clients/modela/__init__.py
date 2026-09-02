@@ -1,5 +1,8 @@
 from .client import ModelaClient
 from .schemas import (
+    ChatCompletionChunk,
+    ChatCompletionChunkChoice,
+    ChatCompletionChunkDelta,
     ChatCompletionRequest,
     ChatCompletionResponse,
     CompletionMessage,
@@ -11,10 +14,13 @@ from .schemas import (
 )
 
 __all__ = [
-    "ModelaClient",
+    "ChatCompletionChunk",
+    "ChatCompletionChunkChoice",
+    "ChatCompletionChunkDelta",
     "ChatCompletionRequest",
     "ChatCompletionResponse",
     "CompletionMessage",
+    "ModelaClient",
     "ScanFileRequest",
     "ScanResponse",
     "SummarizeFileRequest",

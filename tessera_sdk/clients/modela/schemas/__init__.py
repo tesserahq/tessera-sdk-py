@@ -1,3 +1,8 @@
+from .chat_completion_chunk import (
+    ChatCompletionChunk,
+    ChatCompletionChunkChoice,
+    ChatCompletionChunkDelta,
+)
 from .chat_completion_request import ChatCompletionRequest, CompletionMessage
 from .chat_completion_response import (
     ChatCompletionResponse,
@@ -11,10 +16,13 @@ from .summarize_response import SummarizeResponse
 from .summarize_text_request import SummarizeTextRequest
 
 __all__ = [
+    "ChatCompletionChunk",
+    "ChatCompletionChunkChoice",
+    "ChatCompletionChunkDelta",
     "ChatCompletionRequest",
-    "CompletionMessage",
     "ChatCompletionResponse",
     "CompletionChoice",
+    "CompletionMessage",
     "CompletionUsage",
     "ScanFileRequest",
     "ScanResponse",
