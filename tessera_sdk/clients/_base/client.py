@@ -3,16 +3,17 @@ Base client class for all Tessera SDK clients.
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Any
+
 import requests
 
 from ...config import get_settings
 from .exceptions import (
-    TesseraError,
-    TesseraClientError,
-    TesseraServerError,
     TesseraAuthenticationError,
+    TesseraClientError,
+    TesseraError,
     TesseraNotFoundError,
+    TesseraServerError,
     TesseraValidationError,
 )
 
@@ -30,9 +31,9 @@ class BaseClient:
     def __init__(
         self,
         base_url: str,
-        api_token: Optional[str] = None,
-        timeout: Optional[int] = None,
-        session: Optional[requests.Session] = None,
+        api_token: str | None = None,
+        timeout: float | None = None,
+        session: requests.Session | None = None,
         service_name: str = "tessera",
     ):
         """
@@ -50,9 +51,9 @@ class BaseClient:
         self.base_url = base_url.rstrip("/")
         self.api_token = api_token
         self.timeout = (
-            int(timeout)
+            float(timeout)
             if timeout is not None
-            else int(settings.tesserasdk_base_client_timeout)
+            else float(settings.tesserasdk_base_client_timeout)
         )
         self.service_name = service_name
 
@@ -87,10 +88,10 @@ class BaseClient:
         self,
         method: str,
         endpoint: str,
-        data: Optional[Dict[str, Any]] = None,
-        files: Optional[Dict[str, Any]] = None,
-        params: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
+        data: dict[str, Any] | None = None,
+        files: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> requests.Response:
         """
         Make an HTTP request to the API.
@@ -122,8 +123,7 @@ class BaseClient:
         try:
             if files:
                 # For file uploads, don't set Content-Type header
-                if "Content-Type" in request_headers:
-                    del request_headers["Content-Type"]
+                request_headers.pop("Content-Type", None)
                 response = self.session.request(
                     method=method,
                     url=url,

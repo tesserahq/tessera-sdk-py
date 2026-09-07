@@ -2,36 +2,38 @@
 Tessera SDK API clients.
 """
 
-from .identies import IdentiesClient
-from .custos import CustosClient
-from .vaulta import VaultaClient
-from .sendly import SendlyClient
-from .quore import QuoreClient
-from .looply import LooplyClient
-from .modela import ModelaClient
 from ._base import (
     BaseClient,
-    TesseraError,
-    TesseraClientError,
-    TesseraServerError,
     TesseraAuthenticationError,
+    TesseraClientError,
+    TesseraError,
     TesseraNotFoundError,
+    TesseraServerError,
     TesseraValidationError,
 )
+from .custos import CustosClient
+from .identies import IdentiesClient
+from .looply import LooplyClient
+from .modela import ModelaClient
+from .quore import QuoreClient
+from .sendly import SendlyClient
+from .togly import ToglyClient
+from .vaulta import VaultaClient
 
 __all__ = [
-    "IdentiesClient",
+    "BaseClient",
     "CustosClient",
-    "VaultaClient",
-    "SendlyClient",
-    "QuoreClient",
+    "IdentiesClient",
     "LooplyClient",
     "ModelaClient",
-    "BaseClient",
-    "TesseraError",
-    "TesseraClientError",
-    "TesseraServerError",
+    "QuoreClient",
+    "SendlyClient",
     "TesseraAuthenticationError",
+    "TesseraClientError",
+    "TesseraError",
     "TesseraNotFoundError",
+    "TesseraServerError",
     "TesseraValidationError",
+    "ToglyClient",
+    "VaultaClient",
 ]
