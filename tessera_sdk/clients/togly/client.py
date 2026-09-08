@@ -54,9 +54,7 @@ class ToglyClient(BaseClient):
         settings = get_settings()
         resolved_base_url = base_url or settings.togly_api_url
         resolved_timeout = (
-            timeout
-            if timeout is not None
-            else settings.tesserasdk_togly_client_timeout
+            timeout if timeout is not None else settings.tesserasdk_togly_client_timeout
         )
 
         if api_token is None and auth_token_provider is None:
