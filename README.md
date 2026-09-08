@@ -7,6 +7,8 @@ Tessera SDK is a Python client library for integrating Tessera identities into y
 - Connect your application to Tessera identity services.
 - Add authentication middleware and session helpers.
 - Support user onboarding flows with SDK primitives.
+- Perform live Togly feature checks with service-account authentication and safe,
+  configurable fallbacks.
 
 ## Getting started
 

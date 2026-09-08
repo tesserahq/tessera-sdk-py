@@ -4,11 +4,8 @@ This document describes the available clients in the Tessera SDK and their usage
 
 ## Overview
 
-The Tessera SDK now includes three main clients:
-
-1. **IdentiesClient** - For user authentication and identity management
-2. **QuoreClient** - For text summarization and NLP operations
-3. **SendlyClient** - For email sending and management
+The Tessera SDK provides service-specific clients for the Tessera platform, including
+Identies, Custos, Togly, Sendly, Modela, Quore, Vaulta, and Looply.
 
 All clients share a common base architecture for consistency and maintainability.
 
@@ -27,6 +24,32 @@ All clients inherit from `BaseClient` which provides:
 - **Authentication**: Bearer token authentication
 - **Error Handling**: Standardized exception hierarchy
 - **Session Management**: Persistent HTTP sessions with connection pooling
+
+## ToglyClient
+
+`ToglyClient` performs live feature checks against Togly. It does not cache
+feature decisions or evaluate gates locally.
+
+```python
+from tessera_sdk import ToglyClient
+
+client = ToglyClient()  # Uses TOGLY_API_URL and AuthTokenProvider
+
+if client.is_enabled("new_dashboard", actor_id=project_id, default=False):
+    show_new_dashboard()
+
+enabled = client.enabled_features(actor_id=project_id, default=[])
+```
+
+Configuration:
+
+- `TOGLY_API_URL` defaults to `https://togly-api.estate-buddy.com`.
+- `TOGLY_API_AUDIENCE` configures the service-account token audience.
+- `TESSERASDK_TOGLY_CLIENT_TIMEOUT` defaults to `0.3` seconds.
+
+The `default` is returned only for connection failures, timeouts, and Togly
+5xx responses. Authentication, authorization, validation, other 4xx responses,
+and malformed successful responses are raised to the caller.
 
 ## IdentiesClient
 

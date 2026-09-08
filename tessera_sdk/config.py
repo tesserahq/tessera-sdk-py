@@ -1,6 +1,6 @@
 import json
+
 from pydantic import AliasChoices, Field
-from typing import Optional
 from pydantic_settings import BaseSettings
 
 
@@ -44,6 +44,14 @@ class Settings(BaseSettings):
         default="https://modela.tessera.com",
         json_schema_extra={"env": "MODELA_API_URL"},
     )
+    togly_api_url: str = Field(
+        default="https://togly-api.estate-buddy.com",
+        json_schema_extra={"env": "TOGLY_API_URL"},
+    )
+    togly_api_audience: str = Field(
+        default="https://togly-api.estate-buddy.com",
+        json_schema_extra={"env": "TOGLY_API_AUDIENCE"},
+    )
     authorization_cache_enabled: bool = Field(
         default=False,
         json_schema_extra={"env": "AUTHORIZATION_CACHE_ENABLED"},
@@ -59,7 +67,7 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO", json_schema_extra={"env": "LOG_LEVEL"})
     disable_auth: bool = Field(default=False, json_schema_extra={"env": "DISABLE_AUTH"})
     port: int = Field(default=8000, json_schema_extra={"env": "PORT"})
-    identies_host: Optional[str] = Field(
+    identies_host: str | None = Field(
         default=None,
         json_schema_extra={"env": "IDENTIES_HOST"},
     )
@@ -71,6 +79,15 @@ class Settings(BaseSettings):
             "TESSERA_BASE_CLIENT_TIMEOUT",
             "TESSERASDK_BASE_CLIENT_TIMEOUT",
             "tesserasdk.base_client.timeout",
+        ),
+    )
+
+    tesserasdk_togly_client_timeout: float = Field(
+        default=0.3,
+        validation_alias=AliasChoices(
+            "TOGLY_CLIENT_TIMEOUT",
+            "TESSERASDK_TOGLY_CLIENT_TIMEOUT",
+            "tesserasdk.togly_client.timeout",
         ),
     )
 
@@ -86,10 +103,10 @@ class Settings(BaseSettings):
     oidc_api_audience: str = "https://test-api"
     oidc_issuer: str = "https://test.oidc.com/"
     oidc_algorithms: str = "RS256"
-    oidc_jwks_urls: Optional[str] = Field(
+    oidc_jwks_urls: str | None = Field(
         default=None, json_schema_extra={"env": "OIDC_JWKS_URLS"}
     )
-    auth_providers_json: Optional[str] = Field(
+    auth_providers_json: str | None = Field(
         default=None, json_schema_extra={"env": "AUTH_PROVIDERS_JSON"}
     )
 
