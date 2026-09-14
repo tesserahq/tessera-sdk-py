@@ -99,6 +99,14 @@ class Settings(BaseSettings):
         ),
     )
 
+    tesserasdk_modela_stream_read_timeout: float = Field(
+        default=60.0,
+        validation_alias=AliasChoices(
+            "TESSERASDK_MODELA_STREAM_READ_TIMEOUT",
+            "tesserasdk.modela.stream_read_timeout",
+        ),
+    )
+
     oidc_domain: str = "test.oidc.com"
     oidc_api_audience: str = "https://test-api"
     oidc_issuer: str = "https://test.oidc.com/"

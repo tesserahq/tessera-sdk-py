@@ -159,6 +159,67 @@ async def test_stream_complete_raises_on_auth_error(monkeypatch):
             pass
 
 
+def _patch_transport_capturing_timeout(monkeypatch, handler, captured):
+    real_async_client = httpx.AsyncClient
+
+    def fake_async_client(*args, **kwargs):
+        captured["timeout"] = kwargs.get("timeout")
+        kwargs["transport"] = httpx.MockTransport(handler)
+        return real_async_client(*args, **kwargs)
+
+    monkeypatch.setattr(
+        "tessera_sdk.clients.modela.client.httpx.AsyncClient", fake_async_client
+    )
+
+
+@pytest.mark.anyio
+async def test_stream_complete_uses_generous_read_timeout_distinct_from_connect(
+    monkeypatch,
+):
+    captured: dict = {}
+
+    def handler(request):
+        return httpx.Response(200, content=_sse_body(["data: [DONE]", ""]))
+
+    _patch_transport_capturing_timeout(monkeypatch, handler, captured)
+
+    client = ModelaClient(
+        base_url="https://modela.example.com",
+        api_token="tok",
+        timeout=10,
+        stream_read_timeout=90,
+    )
+    messages = [CompletionMessage(role="user", content="Hi")]
+
+    async for _ in client.stream_complete(messages=messages):
+        pass
+
+    timeout = captured["timeout"]
+    assert isinstance(timeout, httpx.Timeout)
+    assert timeout.connect == 10
+    assert timeout.read == 90
+    assert timeout.write == 10
+    assert timeout.pool == 10
+
+
+@pytest.mark.anyio
+async def test_stream_complete_read_timeout_defaults_from_settings(monkeypatch):
+    captured: dict = {}
+
+    def handler(request):
+        return httpx.Response(200, content=_sse_body(["data: [DONE]", ""]))
+
+    _patch_transport_capturing_timeout(monkeypatch, handler, captured)
+
+    client = ModelaClient(base_url="https://modela.example.com", api_token="tok")
+    messages = [CompletionMessage(role="user", content="Hi")]
+
+    async for _ in client.stream_complete(messages=messages):
+        pass
+
+    assert captured["timeout"].read == 60.0
+
+
 @pytest.fixture
 def anyio_backend():
     return "asyncio"
