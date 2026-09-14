@@ -13,6 +13,7 @@ from ...clients._base.exceptions import (
 )
 from ...domain.schemas.user import UserOnboard, UserNeedsOnboarding
 from ...config import get_settings
+from ._context import request_context
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,16 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
         )
 
     async def dispatch(self, request: Request, call_next):
+        try:
+            return await self._dispatch(request, call_next)
+        except Exception:
+            logger.exception(
+                "Unhandled error in UserOnboardingMiddleware for %s",
+                request_context(request),
+            )
+            raise
+
+    async def _dispatch(self, request: Request, call_next):
         """
         Process the request and handle user onboarding if needed.
         Only processes requests that have a user set in request.state.

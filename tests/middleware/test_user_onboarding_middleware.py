@@ -157,6 +157,39 @@ def test_onboarding_returns_error_when_onboard_fails():
     }
 
 
+def test_onboarding_logs_user_context_on_unhandled_error(caplog):
+    async def failing_handler(request):
+        raise RuntimeError("boom")
+
+    existing_user = SimpleNamespace(
+        id="user-1", external_id="ext-1", needs_onboarding=False
+    )
+
+    app = Starlette(routes=[Route("/protected", failing_handler)])
+    app.add_middleware(UserOnboardingMiddleware, user_service_factory=None)
+    app.add_middleware(SetUserMiddleware, user=existing_user)
+    client = TestClient(app, raise_server_exceptions=False)
+
+    with (
+        patch(
+            "tessera_sdk.server.middleware.user_onboarding.get_settings",
+            return_value=SimpleNamespace(
+                identies_api_url="https://identies.example.com"
+            ),
+        ),
+        caplog.at_level("ERROR"),
+    ):
+        client.get("/protected")
+
+    messages = [record.getMessage() for record in caplog.records]
+    assert any(
+        "Unhandled error in UserOnboardingMiddleware" in message
+        and "ext-1" in message
+        and "/protected" in message
+        for message in messages
+    )
+
+
 def test_onboarding_can_be_skipped_for_paths():
     onboarding_user = UserNeedsOnboarding(needs_onboarding=True, external_id="ext-skip")
     app = _build_app(user=onboarding_user, skip_onboarding_paths=["/skip"])

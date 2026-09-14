@@ -6,9 +6,10 @@ from starlette.exceptions import HTTPException
 from starlette import status
 from starlette.responses import JSONResponse
 
+from ...domain.schemas.user import UserNeedsOnboarding
 from ..auth.api_key_handler import APIKeyHandler
 from ..auth.token_handler import TokenHandler
-from ...domain.schemas.user import UserNeedsOnboarding
+from ._context import request_context
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,16 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         )
 
     async def dispatch(self, request: Request, call_next):
+        try:
+            return await self._dispatch(request, call_next)
+        except Exception:
+            logger.exception(
+                "Unhandled error in AuthenticationMiddleware for %s",
+                request_context(request),
+            )
+            raise
+
+    async def _dispatch(self, request: Request, call_next):
         # Check if the request path starts with any of the skip paths
         for skip_path in self.skip_paths:
             if request.url.path.startswith(skip_path):
@@ -101,5 +112,15 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 return JSONResponse(status_code=401, content={"error": "Invalid token"})
             elif e.status_code == status.HTTP_403_FORBIDDEN:
                 return JSONResponse(status_code=403, content={"error": "Forbidden"})
+            else:
+                logger.warning(
+                    "Unhandled HTTPException status %s during token verification for %s: %s",
+                    e.status_code,
+                    request_context(request),
+                    e.detail,
+                )
+                return JSONResponse(
+                    status_code=e.status_code, content={"error": e.detail}
+                )
 
         return await call_next(request)
