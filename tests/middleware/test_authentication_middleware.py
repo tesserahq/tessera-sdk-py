@@ -105,6 +105,45 @@ def test_auth_middleware_accepts_api_key():
     assert response.json() == {"user_id": "user-2"}
 
 
+def test_auth_middleware_surfaces_unmatched_http_exception_status():
+    app = _build_app()
+    client = TestClient(app)
+
+    with patch(
+        "tessera_sdk.server.middleware.authentication.TokenHandler.verify",
+        side_effect=HTTPException(status_code=418, detail="I'm a teapot"),
+    ):
+        response = client.get("/protected", headers={"Authorization": "Bearer token"})
+
+    assert response.status_code == 418
+    assert response.json() == {"error": "I'm a teapot"}
+
+
+def test_auth_middleware_logs_request_context_on_unhandled_error(caplog):
+    app = _build_app()
+    client = TestClient(app)
+
+    with (
+        patch(
+            "tessera_sdk.server.middleware.authentication.TokenHandler.verify",
+            side_effect=RuntimeError("boom"),
+        ),
+        caplog.at_level("ERROR"),
+        client,
+    ):
+        try:
+            client.get("/protected", headers={"Authorization": "Bearer token"})
+        except RuntimeError:
+            pass
+
+    messages = [record.getMessage() for record in caplog.records]
+    assert any(
+        "Unhandled error in AuthenticationMiddleware" in message
+        and "/protected" in message
+        for message in messages
+    )
+
+
 def test_auth_middleware_rejects_inactive_api_key():
     app = _build_app()
     client = TestClient(app)
