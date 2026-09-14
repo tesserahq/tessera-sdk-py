@@ -36,6 +36,7 @@ class ModelaClient(BaseClient):
         api_token: Optional[str] = None,
         timeout: Optional[int] = None,
         session: Optional[requests.Session] = None,
+        stream_read_timeout: Optional[float] = None,
     ):
         if base_url is None:
             base_url = get_settings().modela_api_url
@@ -46,6 +47,19 @@ class ModelaClient(BaseClient):
             timeout=timeout,
             session=session,
             service_name="modela",
+        )
+
+        # `timeout` above governs connect/write/pool for both the sync
+        # (requests) client used by `complete` and the streaming client
+        # below. It intentionally does NOT bound how long `stream_complete`
+        # may wait between chunks: a streamed completion can legitimately
+        # go quiet for tens of seconds between tokens (long generations,
+        # tool calls, backend load), and reusing `timeout` as the read
+        # timeout there causes spurious httpx.ReadTimeout failures mid-stream.
+        self.stream_read_timeout = (
+            float(stream_read_timeout)
+            if stream_read_timeout is not None
+            else float(get_settings().tesserasdk_modela_stream_read_timeout)
         )
 
     def complete(
@@ -95,8 +109,15 @@ class ModelaClient(BaseClient):
         url = f"{self.base_url}/chat/completions"
         logger.info(f"Making streaming POST request to {url}")
 
+        stream_timeout = httpx.Timeout(
+            connect=self.timeout,
+            read=self.stream_read_timeout,
+            write=self.timeout,
+            pool=self.timeout,
+        )
+
         async with (
-            httpx.AsyncClient(timeout=self.timeout) as http_client,
+            httpx.AsyncClient(timeout=stream_timeout) as http_client,
             http_client.stream(
                 "POST",
                 url,
