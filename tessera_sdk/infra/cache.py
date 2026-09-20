@@ -1,7 +1,9 @@
 import json
 import logging
-from typing import Optional, Any
-from redis import Redis, ConnectionError
+from typing import Any, Optional
+
+from redis import ConnectionError, Redis
+
 from ..config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -12,13 +14,22 @@ class Cache:
 
     def __init__(self, namespace: str = "cache"):
         self.settings = get_settings()
-        self.redis_client = Redis(
-            host=self.settings.redis_host,
-            port=self.settings.redis_port,
-            decode_responses=True,
-            socket_connect_timeout=5,
-            socket_timeout=5,
-        )
+        client_options = {
+            "decode_responses": True,
+            "socket_connect_timeout": 5,
+            "socket_timeout": 5,
+        }
+        if self.settings.redis_url:
+            self.redis_client = Redis.from_url(
+                self.settings.redis_url,
+                **client_options,
+            )
+        else:
+            self.redis_client = Redis(
+                host=self.settings.redis_host,
+                port=self.settings.redis_port,
+                **client_options,
+            )
         self.namespace = namespace
         self.default_ttl = 3600  # 1 hour in seconds
 
@@ -47,8 +58,8 @@ class Cache:
         cache_key = self._get_cache_key(key)
         try:
             cached_value = self.redis_client.get(cache_key)
-        except ConnectionError as e:
-            logger.warning(f"Redis connection failed during read: {e}")
+        except ConnectionError:
+            logger.warning("Redis connection failed during read")
             return None
 
         if cached_value is not None:
@@ -76,8 +87,8 @@ class Cache:
 
         try:
             success = self.redis_client.setex(cache_key, ttl, serialized_value)
-        except ConnectionError as e:
-            logger.warning(f"Redis connection failed during write: {e}")
+        except ConnectionError:
+            logger.warning("Redis connection failed during write")
             return False
 
         if success:
@@ -163,8 +174,8 @@ class Cache:
         """
         try:
             return self.redis_client.ping()
-        except Exception as e:
-            logger.error(f"Redis ping failed: {e}")
+        except Exception:
+            logger.error("Redis ping failed")
             return False
 
 

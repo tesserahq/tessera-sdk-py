@@ -1,6 +1,9 @@
-import pytest
-from unittest.mock import Mock, patch
 import json
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
+
+import pytest
+from redis import ConnectionError
 
 from tessera_sdk.infra.cache import Cache
 
@@ -10,12 +13,65 @@ def mock_redis():
     with patch("tessera_sdk.infra.cache.Redis") as mock_redis_class:
         mock_redis_instance = Mock()
         mock_redis_class.return_value = mock_redis_instance
+        mock_redis_class.from_url.return_value = mock_redis_instance
         yield mock_redis_instance
 
 
 @pytest.fixture
 def cache(mock_redis):
-    return Cache("test")
+    settings = SimpleNamespace(
+        redis_url=None,
+        redis_host="redis",
+        redis_port=6379,
+    )
+    with patch("tessera_sdk.infra.cache.get_settings", return_value=settings):
+        return Cache("test")
+
+
+def test_cache_uses_authenticated_redis_url():
+    redis_url = "redis://linden_app:test-password@redis:6379/0"
+    settings = SimpleNamespace(
+        redis_url=redis_url,
+        redis_host="ignored",
+        redis_port=6380,
+    )
+
+    with (
+        patch("tessera_sdk.infra.cache.get_settings", return_value=settings),
+        patch("tessera_sdk.infra.cache.Redis") as redis_class,
+    ):
+        Cache("test")
+
+    redis_class.from_url.assert_called_once_with(
+        redis_url,
+        decode_responses=True,
+        socket_connect_timeout=5,
+        socket_timeout=5,
+    )
+    redis_class.assert_not_called()
+
+
+def test_cache_falls_back_to_redis_host_and_port():
+    settings = SimpleNamespace(
+        redis_url=None,
+        redis_host="legacy-redis",
+        redis_port=6380,
+    )
+
+    with (
+        patch("tessera_sdk.infra.cache.get_settings", return_value=settings),
+        patch("tessera_sdk.infra.cache.Redis") as redis_class,
+    ):
+        Cache("test")
+
+    redis_class.assert_called_once_with(
+        host="legacy-redis",
+        port=6380,
+        decode_responses=True,
+        socket_connect_timeout=5,
+        socket_timeout=5,
+    )
+    redis_class.from_url.assert_not_called()
 
 
 def test_get_cache_key(cache):
@@ -64,13 +120,21 @@ def test_read_cache_miss(cache, mock_redis):
 
 def test_read_redis_error(cache, mock_redis):
     """Test reading when Redis connection fails."""
-    from redis import ConnectionError
-
     mock_redis.get.side_effect = ConnectionError("Connection failed")
 
     result = cache.read("test-key")
 
     assert result is None
+
+
+def test_read_error_does_not_log_redis_credentials(cache, mock_redis, caplog):
+    secret = "redis://linden_app:do-not-log-me@redis:6379/0"
+    mock_redis.get.side_effect = ConnectionError(secret)
+
+    cache.read("test-key")
+
+    assert secret not in caplog.text
+    assert "do-not-log-me" not in caplog.text
 
 
 def test_write_success(cache, mock_redis):
@@ -103,8 +167,6 @@ def test_write_custom_ttl(cache, mock_redis):
 
 def test_write_redis_error(cache, mock_redis):
     """Test writing when Redis connection fails."""
-    from redis import ConnectionError
-
     mock_redis.setex.side_effect = ConnectionError("Connection failed")
 
     result = cache.write("test-key", {"test": "data"})
