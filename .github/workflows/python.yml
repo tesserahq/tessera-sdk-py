@@ -32,6 +32,26 @@ jobs:
         with:
           src: ". tests/"
           options: "--check --verbose"
+      - name: Start Redis ACL test service
+        run: |
+          docker run --detach --name redis-acl --publish 6379:6379 \
+            redis@sha256:bd999b5cfee25fb24b8320a31fddbd69f462df44c8138c66e369582937beebc0 \
+            redis-server --save '' --appendonly no \
+            --user default off \
+            --user linden_app on '>sdk-test-password' '~*' '&*' '+@all'
+          for attempt in {1..30}; do
+            if docker exec redis-acl redis-cli \
+              --user linden_app --pass sdk-test-password ping \
+              | grep -q PONG; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs redis-acl
+          exit 1
       - name: Run unit tests
+        env:
+          TEST_REDIS_URL: redis://linden_app:sdk-test-password@localhost:6379/0
+          TEST_REDIS_ANONYMOUS_URL: redis://localhost:6379/0
         run: |
           poetry run pytest tests/
