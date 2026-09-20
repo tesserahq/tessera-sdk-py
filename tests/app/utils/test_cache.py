@@ -4,6 +4,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from redis import ConnectionError
+from redis.exceptions import RedisError
 
 from tessera_sdk.infra.cache import Cache
 
@@ -19,22 +20,14 @@ def mock_redis():
 
 @pytest.fixture
 def cache(mock_redis):
-    settings = SimpleNamespace(
-        redis_url=None,
-        redis_host="redis",
-        redis_port=6379,
-    )
+    settings = SimpleNamespace(redis_connection_url="redis://redis:6379/0")
     with patch("tessera_sdk.infra.cache.get_settings", return_value=settings):
         return Cache("test")
 
 
 def test_cache_uses_authenticated_redis_url():
     redis_url = "redis://linden_app:test-password@redis:6379/0"
-    settings = SimpleNamespace(
-        redis_url=redis_url,
-        redis_host="ignored",
-        redis_port=6380,
-    )
+    settings = SimpleNamespace(redis_connection_url=redis_url)
 
     with (
         patch("tessera_sdk.infra.cache.get_settings", return_value=settings),
@@ -49,29 +42,6 @@ def test_cache_uses_authenticated_redis_url():
         socket_timeout=5,
     )
     redis_class.assert_not_called()
-
-
-def test_cache_falls_back_to_redis_host_and_port():
-    settings = SimpleNamespace(
-        redis_url=None,
-        redis_host="legacy-redis",
-        redis_port=6380,
-    )
-
-    with (
-        patch("tessera_sdk.infra.cache.get_settings", return_value=settings),
-        patch("tessera_sdk.infra.cache.Redis") as redis_class,
-    ):
-        Cache("test")
-
-    redis_class.assert_called_once_with(
-        host="legacy-redis",
-        port=6380,
-        decode_responses=True,
-        socket_connect_timeout=5,
-        socket_timeout=5,
-    )
-    redis_class.from_url.assert_not_called()
 
 
 def test_get_cache_key(cache):
@@ -288,7 +258,7 @@ def test_ping_success(cache, mock_redis):
 
 def test_ping_failure(cache, mock_redis):
     """Test Redis ping when connection fails."""
-    mock_redis.ping.side_effect = Exception("Connection failed")
+    mock_redis.ping.side_effect = RedisError("Connection failed")
 
     result = cache.ping()
 
