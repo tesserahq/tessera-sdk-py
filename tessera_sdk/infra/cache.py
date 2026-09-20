@@ -1,8 +1,9 @@
 import json
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from redis import ConnectionError, Redis
+from redis.exceptions import RedisError
 
 from ..config import get_settings
 
@@ -19,17 +20,10 @@ class Cache:
             "socket_connect_timeout": 5,
             "socket_timeout": 5,
         }
-        if self.settings.redis_url:
-            self.redis_client = Redis.from_url(
-                self.settings.redis_url,
-                **client_options,
-            )
-        else:
-            self.redis_client = Redis(
-                host=self.settings.redis_host,
-                port=self.settings.redis_port,
-                **client_options,
-            )
+        self.redis_client = Redis.from_url(
+            self.settings.redis_connection_url,
+            **client_options,
+        )
         self.namespace = namespace
         self.default_ttl = 3600  # 1 hour in seconds
 
@@ -45,7 +39,7 @@ class Cache:
         """Deserialize JSON string to value."""
         return json.loads(value)
 
-    def read(self, key: str) -> Optional[Any]:
+    def read(self, key: str) -> Any | None:
         """
         Read value from cache.
 
@@ -69,7 +63,7 @@ class Cache:
         logger.debug(f"Cache miss for key: {key}")
         return None
 
-    def write(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
+    def write(self, key: str, value: Any, ttl: int | None = None) -> bool:
         """
         Write value to cache.
 
@@ -151,7 +145,7 @@ class Cache:
         cache_key = self._get_cache_key(key)
         return bool(self.redis_client.exists(cache_key))
 
-    def ttl(self, key: str) -> Optional[int]:
+    def ttl(self, key: str) -> int | None:
         """
         Get remaining TTL for a key.
 
@@ -174,7 +168,7 @@ class Cache:
         """
         try:
             return self.redis_client.ping()
-        except Exception:
+        except RedisError:
             logger.error("Redis ping failed")
             return False
 

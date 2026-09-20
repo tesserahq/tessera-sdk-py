@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     redis_namespace: str = Field(
         default="llama_index", json_schema_extra={"env": "REDIS_NAMESPACE"}
     )
+
+    @property
+    def redis_connection_url(self) -> str:
+        """Return the configured URL or the legacy host/port equivalent."""
+        return self.redis_url or f"redis://{self.redis_host}:{self.redis_port}/0"
+
     identies_api_url: str = Field(
         default="https://identies.tessera.com",
         json_schema_extra={"env": "IDENTIES_API_URL"},
