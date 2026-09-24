@@ -72,21 +72,47 @@ class TokenHandler:
             if "Authorization" in self.identies_client.session.headers:
                 del self.identies_client.session.headers["Authorization"]
 
+    def _candidate_providers(self, token: str) -> list[dict]:
+        """Narrow the configured providers to those that may have issued ``token``.
+
+        The claims are read without verifying the signature, so they are only
+        used to choose which providers to try; every candidate still verifies
+        the signature, issuer, audience, algorithm, and expiry. Providers
+        without a configured issuer stay candidates, and a token without an
+        ``iss`` claim is tried against every provider.
+        """
+        try:
+            claims = jwt.decode(token, options={"verify_signature": False})
+        except Exception as error:
+            raise UnauthorizedException("Invalid token") from error
+
+        issuer = claims.get("iss") if isinstance(claims, dict) else None
+        if not issuer:
+            return list(self.providers)
+        return [p for p in self.providers if p.get("issuer") in (None, issuer)]
+
     def _verify_jwt(self, token: str) -> dict:
         """Verify JWT and return decoded payload."""
+        candidates = self._candidate_providers(token)
+        if not candidates:
+            logger.info("Rejected JWT from an unconfigured issuer")
+            raise UnauthorizedException("Unknown token issuer")
+
         last_error: Exception | None = None
 
-        for provider in self.providers:
+        for provider in candidates:
             issuer = provider.get("issuer")
             audience = provider.get("audience")
             try:
-                logger.info(f"Verifying JWT with provider: {provider['jwks_url']}")
+                logger.debug(f"Verifying JWT with provider: {provider['jwks_url']}")
                 signing_key = (
                     provider["jwks_client"].get_signing_key_from_jwt(token).key
                 )
             except jwt.exceptions.PyJWKClientError as error:
-                logger.error(
-                    f"Error verifying JWT with provider: {provider['jwks_url']} - {error}"
+                # Expected when several providers share an issuer or while keys
+                # rotate; the final outcome is logged below.
+                logger.debug(
+                    f"No signing key for JWT at provider: {provider['jwks_url']} - {error}"
                 )
                 last_error = error
                 continue
@@ -108,6 +134,7 @@ class TokenHandler:
                 continue
 
         if last_error:
+            logger.info(f"Rejected JWT: {type(last_error).__name__}")
             raise UnauthorizedException(str(last_error))
         raise UnauthorizedException("Unable to verify token")
 
