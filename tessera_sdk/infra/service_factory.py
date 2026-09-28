@@ -1,7 +1,12 @@
 """
 Service factory for creating service instances with database sessions from request state.
+
+Deprecated: the session it creates has no owner, so nothing commits on
+success or rolls back on failure. Use
+``tessera_sdk.server.user_service.create_managed_user_service_factory``.
 """
 
+import warnings
 from typing import Any
 from .database import DatabaseManager
 
@@ -43,4 +48,10 @@ def create_service_factory(
     Returns:
         ServiceFactory instance
     """
+    warnings.warn(
+        "create_service_factory hands the middlewares an unmanaged session; use "
+        "tessera_sdk.server.user_service.create_managed_user_service_factory.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return ServiceFactory(service_class, db_manager)

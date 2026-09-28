@@ -5,14 +5,17 @@ This class encapsulates database engine creation, session management,
 and event listeners. It can be easily moved to a common package.
 """
 
-from typing import Generator
+from collections.abc import Generator, Iterator
+from contextlib import contextmanager
+
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from sqlalchemy import create_engine
 from sqlalchemy.orm import (
     sessionmaker,
 )
 from sqlalchemy.orm.session import Session as SessionType
-from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-from contextlib import contextmanager
+
+from .transactions import bind_session
 
 
 class DatabaseManager:
@@ -32,6 +35,7 @@ class DatabaseManager:
         pool_pre_ping: bool = True,
         pool_recycle: int = 300,
         pool_use_lifo: bool = True,
+        autoflush: bool = False,
     ):
         """
         Initialize the database manager.
@@ -44,6 +48,11 @@ class DatabaseManager:
             pool_recycle: Connection recycle time in seconds
             pool_use_lifo: Use LIFO for connection pool
             application_name: Application name for database connections
+            autoflush: Flush pending changes before each query (SQLAlchemy's
+                default). Services adopting managed transactions
+                (``session_scope``) pass ``True``; the default stays
+                ``False`` for backward compatibility and will change once
+                every service has migrated.
         """
         self.database_url = database_url
         self.application_name = application_name
@@ -64,7 +73,7 @@ class DatabaseManager:
 
         # Create session factory
         self.SessionLocal = sessionmaker(
-            autocommit=False, autoflush=False, bind=self.engine
+            autocommit=False, autoflush=autoflush, bind=self.engine
         )
 
     def get_db(self) -> Generator[SessionType, None, None]:
@@ -105,3 +114,17 @@ class DatabaseManager:
             raise
         finally:
             session.close()
+
+    @contextmanager
+    def session_scope(self) -> Iterator[SessionType]:
+        """One managed session for one application execution.
+
+        Commits when the block succeeds, rolls back when an exception escapes,
+        and closes. While the block runs the session is the current session,
+        so ``on_commit`` callbacks registered anywhere inside it run only
+        after the commit. Use this, not ``get_db``/``create_session``, for
+        every entry point (tasks, CLI, tool calls, event handlers); FastAPI
+        routes use ``create_db_dependency``.
+        """
+        with self.db_session() as session, bind_session(session):
+            yield session

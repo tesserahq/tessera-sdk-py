@@ -18,6 +18,28 @@ pip install tessera-sdk
 
 ![Alt](https://repobeats.axiom.co/api/embed/68fba45681f212f91c97518a7adaf7b815cad452.svg "Repobeats analytics image")
 
+## Managed database transactions
+
+Services let the entry point own the transaction. Each request, task, or
+command gets one SQLAlchemy session, which commits on success and rolls back
+on error. Repositories and commands never commit.
+
+```python
+db_manager = DatabaseManager(database_url, application_name, autoflush=True)
+get_db, DbSession = create_db_dependency(db_manager)  # tessera_sdk.server.dependencies
+
+@router.post("/pets")
+def create_pet(payload: PetCreate, db: DbSession): ...
+
+with db_manager.session_scope() as db:  # tasks, CLI, event handlers
+    ...
+
+on_commit(lambda: publish(event))  # tessera_sdk.infra: runs only after commit
+```
+
+See [docs/managed-transactions.md](docs/managed-transactions.md) for the rules,
+the adoption steps, and the test and CI helpers in `tessera_sdk.testing`.
+
 ## Redis configuration
 
 Redis-backed SDK features prefer `REDIS_URL`. Authenticated deployments should
