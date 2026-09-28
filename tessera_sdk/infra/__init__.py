@@ -10,8 +10,15 @@ from .m2m_token import (
     get_m2m_token_sync,
 )
 from .service_factory import ServiceFactory, create_service_factory
+from .repository import Repository
+from .transactions import bind_session, current_session, on_commit, savepoint
 
 __all__ = [
+    "Repository",
+    "bind_session",
+    "current_session",
+    "on_commit",
+    "savepoint",
     "AuthTokenProvider",
     "Cache",
     "create_cache",
