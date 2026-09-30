@@ -19,7 +19,7 @@ starlette = ">=0.50.0"
 sqlalchemy = {version = "^2.1.1", extras = ["asyncio"]}
 cryptography = "^50.0.0"
 pydantic-settings = "^2.15.0"
-redis = ">=5.0.1,<8"
+redis = ">=8.1,<9"
 faststream = {extras = ["nats"], version = "^0.7.0"}
 jinja2 = "^3.1.6"
 
