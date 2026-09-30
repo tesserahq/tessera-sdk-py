@@ -40,6 +40,13 @@ on_commit(lambda: publish(event))  # tessera_sdk.infra: runs only after commit
 See [docs/managed-transactions.md](docs/managed-transactions.md) for the rules,
 the adoption steps, and the test and CI helpers in `tessera_sdk.testing`.
 
+### PostgreSQL driver
+
+The SDK ships the PostgreSQL driver: `psycopg` (v3), which SQLAlchemy 2.1 uses
+for plain `postgresql://` URLs. Services pass a plain `postgresql://` URL to
+`DatabaseManager` and should not declare their own driver (drop
+`psycopg2-binary`).
+
 ## Redis configuration
 
 Redis-backed SDK features prefer `REDIS_URL`. Authenticated deployments should
