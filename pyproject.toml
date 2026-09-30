@@ -16,7 +16,7 @@ httpx = "^0.28.1"
 pydantic = {extras = ["email"], version = "^2.12.4"}
 urllib3 = ">=1.26.0"
 starlette = ">=0.50.0"
-sqlalchemy = "^2.1.1"
+sqlalchemy = {version = "^2.1.1", extras = ["asyncio"]}
 cryptography = "^50.0.0"
 pydantic-settings = "^2.15.0"
 redis = ">=5.0.1,<8"
