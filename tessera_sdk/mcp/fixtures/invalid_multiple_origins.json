@@ -1,0 +1,11 @@
+{
+  "com.tesserahq/events": [
+    {
+      "id": "event-123",
+      "source": "/fixtures/people",
+      "spec_version": "1.0",
+      "event_type": "person.created",
+      "tags": ["origin:mcp", "origin:http-api"]
+    }
+  ]
+}

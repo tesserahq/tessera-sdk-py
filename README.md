@@ -40,6 +40,12 @@ on_commit(lambda: publish(event))  # tessera_sdk.infra: runs only after commit
 See [docs/managed-transactions.md](docs/managed-transactions.md) for the rules,
 the adoption steps, and the test and CI helpers in `tessera_sdk.testing`.
 
+## MCP contracts
+
+Services and plugins that expose MCP tools use `tessera_sdk.mcp` for shared event,
+diagnostic, metadata, and conformance contracts. See
+[docs/mcp-contracts.md](docs/mcp-contracts.md).
+
 ## Redis configuration
 
 Redis-backed SDK features prefer `REDIS_URL`. Authenticated deployments should

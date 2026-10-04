@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.tessera.dev/mcp/metadata/v1",
+  "title": "Tessera MCP metadata",
+  "type": "object",
+  "properties": {
+    "com.tesserahq/events": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {"$ref": "#/$defs/event"}
+    },
+    "com.tesserahq/debug": {"$ref": "#/$defs/toolDebug"}
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "event": {
+      "type": "object",
+      "required": ["id", "source", "spec_version", "event_type", "tags"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "source": {"type": "string", "minLength": 1},
+        "spec_version": {"const": "1.0"},
+        "event_type": {"type": "string", "minLength": 1},
+        "data_content_type": {"type": ["string", "null"]},
+        "dataschema": {"type": ["string", "null"], "format": "uri"},
+        "subject": {"type": ["string", "null"]},
+        "time": {"type": ["string", "null"], "format": "date-time"},
+        "event_data": {},
+        "user_id": {"type": ["string", "null"]},
+        "labels": {"type": ["object", "null"]},
+        "tags": {
+          "type": "array",
+          "contains": {"type": "string", "pattern": "^origin:.+"},
+          "minContains": 1,
+          "maxContains": 1,
+          "items": {"type": "string"}
+        },
+        "project_id": {"type": ["string", "null"], "format": "uuid"},
+        "privy": {"type": ["boolean", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "toolDebug": {
+      "type": "object",
+      "properties": {
+        "arguments": {"type": "object"},
+        "result": {"type": "object"}
+      },
+      "additionalProperties": false
+    },
+    "resourceReference": {
+      "type": "object",
+      "required": ["type", "id"],
+      "properties": {
+        "type": {"type": "string", "minLength": 1},
+        "id": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "publicEventData": {
+      "type": "object",
+      "required": ["resource"],
+      "properties": {
+        "resource": {"$ref": "#/$defs/resourceReference"},
+        "related": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/resourceReference"}
+        },
+        "changed_fields": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
