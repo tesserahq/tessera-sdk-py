@@ -67,8 +67,12 @@ class DatabaseManager:
             pool_use_lifo=pool_use_lifo,
             connect_args={"application_name": application_name},
         )
+        # skip_dep_check: the latest instrumentation release caps SQLAlchemy
+        # below 2.1 and would silently skip instrumenting. Remove once it
+        # supports 2.1 (tesserahq/tessera-sdk-py#112).
         SQLAlchemyInstrumentor().instrument(
             engine=self.engine,
+            skip_dep_check=True,
         )
 
         # Create session factory
