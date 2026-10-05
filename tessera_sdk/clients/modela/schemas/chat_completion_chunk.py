@@ -1,17 +1,20 @@
-from typing import Optional
+from pydantic import BaseModel, field_validator
 
-from pydantic import BaseModel
+from .chat_completion_extensions import (
+    ChatCompletionChunkExtensions,
+    _validate_optional,
+)
 
 
 class ChatCompletionChunkDelta(BaseModel):
-    role: Optional[str] = None
-    content: Optional[str] = None
+    role: str | None = None
+    content: str | None = None
 
 
 class ChatCompletionChunkChoice(BaseModel):
     index: int
     delta: ChatCompletionChunkDelta
-    finish_reason: Optional[str] = None
+    finish_reason: str | None = None
 
 
 class ChatCompletionChunk(BaseModel):
@@ -20,3 +23,9 @@ class ChatCompletionChunk(BaseModel):
     created: int
     model: str
     choices: list[ChatCompletionChunkChoice]
+    extensions: ChatCompletionChunkExtensions | None = None
+
+    @field_validator("extensions", mode="wrap")
+    @classmethod
+    def _drop_invalid_extensions(cls, value, handler):
+        return _validate_optional("extensions", value, handler)

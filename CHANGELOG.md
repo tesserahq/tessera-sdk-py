@@ -5,6 +5,18 @@
 - Fix the authorization cache reading a different key (`authorized`) than it
   writes (`allowed`): with `AUTHORIZATION_CACHE_ENABLED=true`, every cached
   decision, including allowed ones, was answered with 403.
+- Add first-class event and tool-execution include channels to `ModelaClient`
+  streaming and non-streaming completions.
+- Parse completion extensions using the shared MCP contracts and preserve
+  committed events on Modela completion exceptions.
+- Keep the legacy nested `extra_body.include` request shape compatible while
+  rejecting conflicting include sources.
+- Parse completion extensions best-effort: unreadable event and tool-execution
+  records are dropped and logged instead of interrupting a stream or failing a
+  completion, and execution records ignore fields added by newer Modela versions.
+- Make every Modela client exception a subclass of `ModelaError`, so one handler
+  can read committed `events` from any failed completion.
+- Compare `include` and `extra_body.include` as sets of channel names.
 
 ## 0.2.0
 
