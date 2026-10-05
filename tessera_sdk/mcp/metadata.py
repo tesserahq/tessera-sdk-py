@@ -3,9 +3,10 @@
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from tessera_sdk.infra.events import Event
 
@@ -25,10 +26,35 @@ class MetadataLimits:
     """
 
     max_events: int = 100
-    max_event_bytes: int = 256 * 1024
+    max_total_event_bytes: int = 256 * 1024
     max_debug_bytes: int = 1024 * 1024
     max_depth: int = 12
     max_items: int = 10_000
+
+
+class MCPMetadataError(ValueError):
+    """Stable ingestion error that never includes rejected metadata values."""
+
+    def __init__(self, code: str, message: str) -> None:
+        self.code = code
+        super().__init__(message)
+
+
+class MCPEvent(Event):
+    """Tessera event accepted from MCP result metadata.
+
+    Unlike the general-purpose :class:`Event`, an MCP event must preserve the
+    producer-assigned identity and occurrence time used by every other delivery
+    transport. Its payload must be a JSON object (or null); the producing service
+    remains responsible for validating the domain-specific payload and ensuring
+    that it contains no data unsafe for completion clients.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(min_length=1)
+    time: datetime
+    event_data: dict[str, Any] | None = None
 
 
 class MCPMetadata(BaseModel):
@@ -42,15 +68,15 @@ class MCPMetadata(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    events: list[Event] = Field(default_factory=list)
+    events: list[MCPEvent] = Field(default_factory=list, max_length=100)
     debug: ToolDebug | None = None
 
     @field_validator("events")
     @classmethod
-    def validate_event_origins(cls, events: list[Event]) -> list[Event]:
+    def validate_event_origins(cls, events: list[MCPEvent]) -> list[MCPEvent]:
         for event in events:
-            if get_origin(event.tags) is None:
-                raise ValueError("Every MCP event must contain one origin:* tag")
+            if get_origin(event.tags) != "mcp":
+                raise ValueError("Every MCP event must contain origin:mcp")
         return events
 
 
@@ -69,34 +95,83 @@ def parse_mcp_metadata(
     not alter or replace the normal MCP result and does not make authorization
     decisions about who may see diagnostic data.
     """
-    raw = dict(meta or {})
-    if "events" in raw or "debug" in raw:
-        raise ValueError("Tessera MCP metadata must use namespaced keys")
+    try:
+        if meta is not None and not isinstance(meta, Mapping):
+            raise MCPMetadataError(
+                "invalid_container", "MCP metadata must be an object"
+            )
 
-    limits = limits or MetadataLimits()
-    raw_events = raw.get(MCP_EVENTS_META_KEY, [])
-    raw_debug = raw.get(MCP_DEBUG_META_KEY)
-    if not isinstance(raw_events, list):
-        raise TypeError(f"{MCP_EVENTS_META_KEY} must be a list")
-    if len(raw_events) > limits.max_events:
-        raise ValueError("MCP event count exceeds the configured limit")
+        raw = dict(meta or {})
+        if "events" in raw or "debug" in raw:
+            raise MCPMetadataError(
+                "unnamespaced_key",
+                "Tessera MCP metadata must use namespaced keys",
+            )
 
-    _assert_payload_limits(raw_events, limits.max_event_bytes, limits)
-    if raw_debug is not None:
-        _assert_payload_limits(raw_debug, limits.max_debug_bytes, limits)
+        limits = limits or MetadataLimits()
+        raw_events = raw.get(MCP_EVENTS_META_KEY, [])
+        if raw_events is None:
+            raw_events = []
+        raw_debug = raw.get(MCP_DEBUG_META_KEY)
+        if not isinstance(raw_events, list):
+            raise MCPMetadataError(
+                "invalid_events_type",
+                f"{MCP_EVENTS_META_KEY} must be a list or null",
+            )
+        if len(raw_events) > limits.max_events:
+            raise MCPMetadataError(
+                "event_count_exceeded",
+                "MCP event count exceeds the configured limit",
+            )
 
-    return MCPMetadata(events=raw_events, debug=raw_debug)
+        _assert_payload_limits(
+            raw_events,
+            limits.max_total_event_bytes,
+            limits,
+            channel="events",
+        )
+        if raw_debug is not None:
+            _assert_payload_limits(
+                raw_debug,
+                limits.max_debug_bytes,
+                limits,
+                channel="debug",
+            )
+
+        return MCPMetadata(events=raw_events, debug=raw_debug)
+    except MCPMetadataError:
+        raise
+    except (TypeError, ValueError, ValidationError):
+        raise MCPMetadataError(
+            "invalid_contract",
+            "MCP metadata does not match the Tessera contract",
+        ) from None
 
 
-def _assert_payload_limits(value: Any, max_bytes: int, limits: MetadataLimits) -> None:
-    encoded = json.dumps(value, separators=(",", ":"), default=str).encode()
+def _assert_payload_limits(
+    value: Any,
+    max_bytes: int,
+    limits: MetadataLimits,
+    *,
+    channel: str,
+) -> None:
+    encoded = json.dumps(value, separators=(",", ":")).encode()
     if len(encoded) > max_bytes:
-        raise ValueError("MCP metadata exceeds the configured byte limit")
+        raise MCPMetadataError(
+            f"{channel}_bytes_exceeded",
+            f"MCP {channel} metadata exceeds the configured byte limit",
+        )
     depth, items = _measure(value)
     if depth > limits.max_depth:
-        raise ValueError("MCP metadata exceeds the configured depth limit")
+        raise MCPMetadataError(
+            f"{channel}_depth_exceeded",
+            f"MCP {channel} metadata exceeds the configured depth limit",
+        )
     if items > limits.max_items:
-        raise ValueError("MCP metadata exceeds the configured item limit")
+        raise MCPMetadataError(
+            f"{channel}_items_exceeded",
+            f"MCP {channel} metadata exceeds the configured item limit",
+        )
 
 
 def _measure(value: Any, depth: int = 0) -> tuple[int, int]:

@@ -77,6 +77,10 @@ for event in metadata.events:
 depth, and item limits. Callers decide whether an invalid provider response is
 dropped, logged, or raised; the SDK never logs payload values.
 
+Every invalid input raises `MCPMetadataError`, whose stable `code` can be logged
+without including rejected values. The default 256 KiB event-byte limit applies
+to the complete events channel, not independently to every event.
+
 Metadata is optional. Read-only tools and plugins that do not produce domain
 events continue to return ordinary MCP responses. A provider emits a completed
 domain event only after the underlying mutation has committed; accepting or
@@ -85,9 +89,12 @@ queuing work is not equivalent to completing that work.
 ## Contract types
 
 - `MCPMetadata` is the parsed view of the two Tessera-owned metadata channels.
-- `PublicEventData` is the minimal client-safe event payload: the affected
-  resource, related resource identities, and changed field names. Full resource
-  state stays in the normal tool result or resource API.
+- `MCPEvent` is the stricter event envelope accepted from MCP metadata. It
+  requires the producer-assigned ID and occurrence time, an `origin:mcp` tag,
+  and object-shaped (or null) `event_data`.
+- `PublicEventData` is an optional reusable payload primitive for domains whose
+  public contract is exactly an affected resource, related resource identities,
+  and changed field names. It is not imposed on every domain event.
 - `ToolDebug` is a provider-authored diagnostic projection. It must never be
   populated by blindly copying arbitrary arguments or results.
 - `ToolExecutionRecord` is Modela-owned execution telemetry and is not emitted by
@@ -99,6 +106,13 @@ queuing work is not equivalent to completing that work.
 
 `CompletionInclude` contains the opt-in response channel names. It does not grant
 access: Modela still applies authorization before including diagnostic data.
+
+`parse_mcp_metadata` validates the event envelope, MCP origin, transport limits,
+and the structural shape of `event_data`; it cannot determine whether a value in
+a domain-owned object is sensitive. Each producing service owns and reviews its
+domain event-data model and must test that private values from the complete tool
+result never enter metadata. Modela authorization is an additional disclosure
+control, not a replacement for producer-side data minimization.
 
 ## Provider compatibility
 

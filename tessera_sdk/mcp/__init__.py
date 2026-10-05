@@ -12,7 +12,9 @@ from .contracts import (
 from .metadata import (
     MCP_DEBUG_META_KEY,
     MCP_EVENTS_META_KEY,
+    MCPEvent,
     MCPMetadata,
+    MCPMetadataError,
     MetadataLimits,
     parse_mcp_metadata,
 )
@@ -21,6 +23,7 @@ from .resources import (
     contract_json_schemas,
     load_contract_fixture,
     load_contract_schema,
+    mcp_metadata_json_schema,
 )
 
 __all__ = [
@@ -28,7 +31,9 @@ __all__ = [
     "MCP_EVENTS_META_KEY",
     "ORIGIN_TAG_PREFIX",
     "CompletionInclude",
+    "MCPEvent",
     "MCPMetadata",
+    "MCPMetadataError",
     "MetadataLimits",
     "PublicEventData",
     "ResourceReference",
@@ -40,6 +45,7 @@ __all__ = [
     "get_origin",
     "load_contract_fixture",
     "load_contract_schema",
+    "mcp_metadata_json_schema",
     "parse_mcp_metadata",
     "set_origin",
 ]
