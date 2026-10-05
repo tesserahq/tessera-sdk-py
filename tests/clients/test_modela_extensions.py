@@ -6,13 +6,27 @@ import pytest
 import requests
 from pydantic import ValidationError
 
-from tessera_sdk.clients.modela import ModelaClient, ModelaServerError
+from tessera_sdk.clients._base.exceptions import (
+    TesseraNotFoundError,
+    TesseraServerError,
+)
+from tessera_sdk.clients.modela import (
+    ModelaAuthenticationError,
+    ModelaClient,
+    ModelaClientError,
+    ModelaError,
+    ModelaNotFoundError,
+    ModelaServerError,
+    ModelaValidationError,
+)
 from tessera_sdk.clients.modela.schemas import (
+    ChatCompletionChunk,
     ChatCompletionRequest,
     ChatCompletionResponse,
     CompletionMessage,
 )
-from tessera_sdk.mcp import CompletionInclude
+from tessera_sdk.infra.events import Event
+from tessera_sdk.mcp import CompletionInclude, ToolExecutionRecord
 
 EVENT = {
     "id": "event-1",
@@ -229,6 +243,175 @@ async def test_streaming_error_exposes_unknown_domain_event_type(monkeypatch):
             pass
 
     assert error.value.events[0].event_type == "household.archived"
+
+
+MALFORMED_EVENT = {**EVENT, "id": "event-bad", "tags": "origin:mcp"}
+
+TRUNCATION_MARKER = {
+    "channel": "tool_executions",
+    "truncated": True,
+    "dropped_count": 3,
+}
+
+
+def _chunk(**extra):
+    return {
+        "id": "chatcmpl-1",
+        "object": "chat.completion.chunk",
+        "created": 1,
+        "model": "model",
+        "choices": [],
+        **extra,
+    }
+
+
+def _text_chunk(content):
+    return _chunk(
+        choices=[{"index": 0, "delta": {"content": content}, "finish_reason": None}]
+    )
+
+
+def _patch_stream(monkeypatch, *chunks):
+    body = "".join(f"data: {json.dumps(chunk)}\n\n" for chunk in chunks)
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, content=f"{body}data: [DONE]\n".encode())
+    )
+    real_client = httpx.AsyncClient
+
+    def client_with_transport(*args, **kwargs):
+        kwargs["transport"] = transport
+        return real_client(*args, **kwargs)
+
+    monkeypatch.setattr(
+        "tessera_sdk.clients.modela.client.httpx.AsyncClient",
+        client_with_transport,
+    )
+
+
+@pytest.mark.anyio
+async def test_streaming_survives_unreadable_extensions(monkeypatch):
+    _patch_stream(
+        monkeypatch,
+        _text_chunk("Creating "),
+        _chunk(extensions={"event": MALFORMED_EVENT}),
+        _chunk(extensions={"tool_execution": TRUNCATION_MARKER}),
+        _chunk(extensions=["not", "an", "object"]),
+        _text_chunk("Jane."),
+    )
+    client = ModelaClient(base_url="https://modela.example.com")
+
+    chunks = [
+        chunk
+        async for chunk in client.stream_complete(
+            [CompletionMessage(role="user", content="Create Jane")],
+            include=[CompletionInclude.EVENTS, CompletionInclude.TOOL_EXECUTIONS],
+        )
+    ]
+
+    text = "".join(c.choices[0].delta.content for c in chunks if c.choices)
+    assert text == "Creating Jane."
+    assert chunks[1].extensions is not None
+    assert chunks[1].extensions.event is None
+    assert chunks[2].extensions is not None
+    assert chunks[2].extensions.tool_execution is None
+    assert chunks[3].extensions is None
+
+
+def test_tool_execution_ignores_fields_added_by_newer_modela():
+    record = {
+        **TOOL_EXECUTION,
+        "error_category": "timeout",
+        "debug": {"arguments": {}, "result": {}, "redacted": True},
+    }
+
+    chunk = ChatCompletionChunk(**_chunk(extensions={"tool_execution": record}))
+
+    assert chunk.extensions is not None
+    assert chunk.extensions.tool_execution is not None
+    assert chunk.extensions.tool_execution.call_id == "call-1"
+    assert isinstance(chunk.extensions.tool_execution, ToolExecutionRecord)
+
+
+def test_non_streaming_response_keeps_valid_records_and_drops_invalid_ones():
+    response = ChatCompletionResponse(
+        **{
+            **RESPONSE,
+            "extensions": {
+                "events": [EVENT, MALFORMED_EVENT],
+                "tool_executions": [TOOL_EXECUTION, TRUNCATION_MARKER],
+            },
+        }
+    )
+
+    assert response.extensions is not None
+    assert [e.id for e in response.extensions.events] == ["event-1"]
+    assert [t.call_id for t in response.extensions.tool_executions] == ["call-1"]
+
+
+def test_completion_error_keeps_valid_events_when_one_is_malformed():
+    response = requests.Response()
+    response.status_code = 502
+    response.url = "https://modela.example.com/chat/completions"
+    response._content = json.dumps(
+        {
+            "detail": "provider failed",
+            "extensions": {
+                "events": [EVENT, MALFORMED_EVENT],
+                "tool_executions": [TRUNCATION_MARKER],
+            },
+        }
+    ).encode()
+    response.headers["Content-Type"] = "application/json"
+    session = Mock()
+    session.headers = {}
+    session.request.return_value = response
+    client = ModelaClient(base_url="https://modela.example.com", session=session)
+
+    with pytest.raises(ModelaError) as error:
+        client.complete([CompletionMessage(role="user", content="Create a person")])
+
+    assert [e.id for e in error.value.events] == ["event-1"]
+
+
+@pytest.mark.parametrize(
+    ("error_type", "status_code"),
+    [
+        (ModelaClientError, 409),
+        (ModelaServerError, 502),
+        (ModelaAuthenticationError, 401),
+        (ModelaNotFoundError, 404),
+        (ModelaValidationError, 400),
+    ],
+)
+def test_every_modela_error_is_catchable_as_modela_error(error_type, status_code):
+    error = error_type("failed", status_code, events=[Event(**EVENT)])
+
+    assert isinstance(error, ModelaError)
+    assert error.status_code == status_code
+    assert error.events[0].id == "event-1"
+
+
+def test_modela_errors_keep_their_tessera_base_types():
+    assert issubclass(ModelaServerError, TesseraServerError)
+    assert issubclass(ModelaNotFoundError, TesseraNotFoundError)
+    assert ModelaNotFoundError().status_code == 404
+
+
+@pytest.mark.parametrize(
+    "nested",
+    [["tool_executions", "events"], ("events", "tool_executions", "events")],
+)
+def test_request_accepts_same_include_channels_in_any_order_or_container(nested):
+    request = ChatCompletionRequest(
+        messages=[CompletionMessage(role="user", content="Hi")],
+        include=[CompletionInclude.EVENTS, CompletionInclude.TOOL_EXECUTIONS],
+        extra_body={"include": nested},
+    )
+
+    assert request.include == [
+        CompletionInclude.EVENTS,
+        CompletionInclude.TOOL_EXECUTIONS,
+    ]
 
 
 @pytest.fixture

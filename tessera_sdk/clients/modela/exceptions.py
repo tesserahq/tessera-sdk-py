@@ -12,14 +12,15 @@ from .._base.exceptions import (
 )
 
 
-class _CompletionEvents:
+class ModelaError(TesseraError):
+    """Base class for every Modela client error.
+
+    ``events`` holds committed domain events Modela returned in the error body,
+    so a caller can reconcile state with a single ``except ModelaError``.
+    """
+
     events: tuple[Event, ...]
 
-    def _set_events(self, events: tuple[Event, ...]) -> None:
-        self.events = events
-
-
-class ModelaError(_CompletionEvents, TesseraError):
     def __init__(
         self,
         message: str,
@@ -28,34 +29,18 @@ class ModelaError(_CompletionEvents, TesseraError):
         events: Iterable[Event] = (),
     ):
         super().__init__(message, status_code)
-        self._set_events(tuple(events))
+        self.events = tuple(events)
 
 
-class ModelaClientError(_CompletionEvents, TesseraClientError):
-    def __init__(
-        self,
-        message: str,
-        status_code: int | None = None,
-        *,
-        events: Iterable[Event] = (),
-    ):
-        super().__init__(message, status_code)
-        self._set_events(tuple(events))
+class ModelaClientError(ModelaError, TesseraClientError):
+    pass
 
 
-class ModelaServerError(_CompletionEvents, TesseraServerError):
-    def __init__(
-        self,
-        message: str,
-        status_code: int | None = None,
-        *,
-        events: Iterable[Event] = (),
-    ):
-        super().__init__(message, status_code)
-        self._set_events(tuple(events))
+class ModelaServerError(ModelaError, TesseraServerError):
+    pass
 
 
-class ModelaAuthenticationError(_CompletionEvents, TesseraAuthenticationError):
+class ModelaAuthenticationError(ModelaError, TesseraAuthenticationError):
     def __init__(
         self,
         message: str = "Authentication failed",
@@ -63,11 +48,10 @@ class ModelaAuthenticationError(_CompletionEvents, TesseraAuthenticationError):
         *,
         events: Iterable[Event] = (),
     ):
-        super().__init__(message, status_code)
-        self._set_events(tuple(events))
+        super().__init__(message, status_code, events=events)
 
 
-class ModelaNotFoundError(_CompletionEvents, TesseraNotFoundError):
+class ModelaNotFoundError(ModelaError, TesseraNotFoundError):
     def __init__(
         self,
         message: str = "Resource not found",
@@ -75,11 +59,10 @@ class ModelaNotFoundError(_CompletionEvents, TesseraNotFoundError):
         *,
         events: Iterable[Event] = (),
     ):
-        super().__init__(message, status_code)
-        self._set_events(tuple(events))
+        super().__init__(message, status_code, events=events)
 
 
-class ModelaValidationError(_CompletionEvents, TesseraValidationError):
+class ModelaValidationError(ModelaError, TesseraValidationError):
     def __init__(
         self,
         message: str = "Validation error",
@@ -87,8 +70,7 @@ class ModelaValidationError(_CompletionEvents, TesseraValidationError):
         *,
         events: Iterable[Event] = (),
     ):
-        super().__init__(message, status_code)
-        self._set_events(tuple(events))
+        super().__init__(message, status_code, events=events)
 
 
 class _ModelaErrorFactory:

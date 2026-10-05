@@ -134,14 +134,33 @@ non-streaming response carries the corresponding plural lists. Existing callers
 that request neither channel and read only completion choices are unchanged.
 
 If a completion fails after a domain operation committed, Modela may return the
-committed events in the error body. Modela-specific SDK exceptions preserve them
-on `error.events`, allowing a UI to reconcile state even though no normal
+committed events in the error body. Every Modela client exception derives from
+`ModelaError` and preserves them on `error.events`, so a single
+`except ModelaError as error:` handler can reconcile state even though no normal
 completion response exists. Tool execution diagnostics are not attached to
 exceptions.
 
+```python
+from tessera_sdk.clients.modela import ModelaError
+
+try:
+    response = client.complete(messages, include=[CompletionInclude.EVENTS])
+except ModelaError as error:
+    for event in error.events:
+        reconcile(event)
+    raise
+```
+
+Extensions are best-effort. The SDK drops an extension record it cannot parse
+(including truncation markers, whose wire position is not yet specified) and logs
+the validation error types without payload values. A malformed record never
+interrupts a stream, fails a completion, or hides the valid records next to it.
+Execution records ignore fields added by newer Modela versions.
+
 For compatibility, callers may continue to place `include` under `extra_body`.
 New code should use the first-class `include` argument. Supplying both is allowed
-only when the values match; conflicting values fail request validation locally.
+only when they name the same channels, in any order; conflicting values fail
+request validation locally.
 
 `parse_mcp_metadata` validates the event envelope, MCP origin, transport limits,
 and the structural shape of `event_data`; it cannot determine whether a value in

@@ -1,6 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
-from .chat_completion_extensions import ChatCompletionExtensions
+from .chat_completion_extensions import ChatCompletionExtensions, _validate_optional
 
 
 class CompletionMessage(BaseModel):
@@ -28,3 +28,8 @@ class ChatCompletionResponse(BaseModel):
     choices: list[CompletionChoice]
     usage: CompletionUsage
     extensions: ChatCompletionExtensions | None = None
+
+    @field_validator("extensions", mode="wrap")
+    @classmethod
+    def _drop_invalid_extensions(cls, value, handler):
+        return _validate_optional("extensions", value, handler)

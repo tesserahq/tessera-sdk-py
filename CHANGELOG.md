@@ -11,6 +11,12 @@
   committed events on Modela completion exceptions.
 - Keep the legacy nested `extra_body.include` request shape compatible while
   rejecting conflicting include sources.
+- Parse completion extensions best-effort: unreadable event and tool-execution
+  records are dropped and logged instead of interrupting a stream or failing a
+  completion, and execution records ignore fields added by newer Modela versions.
+- Make every Modela client exception a subclass of `ModelaError`, so one handler
+  can read committed `events` from any failed completion.
+- Compare `include` and `extra_body.include` as sets of channel names.
 
 ## 0.2.0
 
