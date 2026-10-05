@@ -120,7 +120,7 @@ async def test_authorize_cache_hit_allows():
         return "domain"
 
     cache = Mock()
-    cache.read.return_value = {"authorized": True}
+    cache.read.return_value = {"allowed": True}
     settings = SimpleNamespace(
         custos_api_url="https://custos.example.com",
         authorization_cache_enabled=True,
@@ -157,7 +157,7 @@ async def test_authorize_cache_hit_denies():
         return "domain"
 
     cache = Mock()
-    cache.read.return_value = {"authorized": False}
+    cache.read.return_value = {"allowed": False}
     settings = SimpleNamespace(
         custos_api_url="https://custos.example.com",
         authorization_cache_enabled=True,
@@ -222,7 +222,9 @@ async def test_authorize_denied_writes_cache():
         with pytest.raises(HTTPException) as exc:
             await dependency(request)
 
-    cache.write.assert_called_once()
+    cache.write.assert_called_once_with(
+        "user-1:read:resource:domain", {"allowed": False}, ttl=300
+    )
     assert exc.value.status_code == 403
 
 
@@ -260,8 +262,70 @@ async def test_authorize_allowed_writes_cache():
         dependency = authorize("read", "resource", resolve_domain)
         result = await dependency(request)
 
-    cache.write.assert_called_once()
+    cache.write.assert_called_once_with(
+        "user-1:read:resource:domain", {"allowed": True}, ttl=300
+    )
     assert result is True
+
+
+class _DictCache:
+    def __init__(self):
+        self.entries = {}
+
+    def read(self, key):
+        return self.entries.get(key)
+
+    def write(self, key, value, ttl=None):
+        self.entries[key] = value
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("allowed", [True, False])
+async def test_authorize_cached_decision_matches_custos(allowed):
+    """A decision read back from the cache must match the one Custos gave."""
+
+    async def resolve_domain(_request):
+        return "domain"
+
+    cache = _DictCache()
+    settings = SimpleNamespace(
+        custos_api_url="https://custos.example.com",
+        authorization_cache_enabled=True,
+        authorization_cache_ttl=300,
+    )
+    request = _make_request(
+        user=SimpleNamespace(id="user-1"),
+        headers={"Authorization": "Bearer token"},
+    )
+
+    async def call(dependency):
+        try:
+            return await dependency(request)
+        except HTTPException as exc:
+            return exc.status_code
+
+    with (
+        patch(
+            "tessera_sdk.server.dependencies.authorization.get_settings",
+            return_value=settings,
+        ),
+        patch(
+            "tessera_sdk.server.dependencies.authorization._get_authorization_cache",
+            return_value=cache,
+        ),
+        patch(
+            "tessera_sdk.server.dependencies.authorization.CustosClient.authorize",
+            return_value=DummyAuthorizeResponse(allowed),
+        ) as mock_authorize,
+    ):
+        dependency = authorize("read", "resource", resolve_domain)
+        first = await call(dependency)
+        second = await call(dependency)
+
+    mock_authorize.assert_called_once()
+    expected = True if allowed else 403
+    assert first == expected
+    assert second == expected
 
 
 @pytest.mark.anyio

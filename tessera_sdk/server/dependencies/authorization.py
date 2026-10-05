@@ -123,7 +123,7 @@ def authorize(
             cached_result = cache.read(cache_key)
             if cached_result is not None:
                 logger.debug(f"Authorization cache hit for key: {cache_key}")
-                if not cached_result.get("authorized", False):
+                if not cached_result.get("allowed", False):
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="Access denied",
