@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from .chat_completion_extensions import ChatCompletionExtensions
+
 
 class CompletionMessage(BaseModel):
     role: str
@@ -25,3 +27,4 @@ class ChatCompletionResponse(BaseModel):
     model: str
     choices: list[CompletionChoice]
     usage: CompletionUsage
+    extensions: ChatCompletionExtensions | None = None

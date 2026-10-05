@@ -6,7 +6,7 @@ Base exceptions for the Tessera SDK.
 class TesseraError(Exception):
     """Base exception for all Tessera-related errors."""
 
-    def __init__(self, message: str, status_code: int = None):
+    def __init__(self, message: str, status_code: int | None = None):
         super().__init__(message)
         self.status_code = status_code
 
@@ -14,14 +14,14 @@ class TesseraError(Exception):
 class TesseraClientError(TesseraError):
     """Exception raised for client-side errors (4xx status codes)."""
 
-    def __init__(self, message: str, status_code: int = None):
+    def __init__(self, message: str, status_code: int | None = None):
         super().__init__(message, status_code)
 
 
 class TesseraServerError(TesseraError):
     """Exception raised for server-side errors (5xx status codes)."""
 
-    def __init__(self, message: str, status_code: int = None):
+    def __init__(self, message: str, status_code: int | None = None):
         super().__init__(message, status_code)
 
 

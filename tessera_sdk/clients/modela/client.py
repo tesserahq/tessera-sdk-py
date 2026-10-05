@@ -1,13 +1,15 @@
 import json
 import logging
 from collections.abc import AsyncIterator
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 import requests
 
 from ...config import get_settings
 from ...constants import HTTPMethods
+from ...infra.events import Event
+from ...mcp import CompletionInclude
 from .._base.client import BaseClient
 from .._base.exceptions import (
     TesseraAuthenticationError,
@@ -17,7 +19,16 @@ from .._base.exceptions import (
     TesseraServerError,
     TesseraValidationError,
 )
+from .exceptions import (
+    ModelaAuthenticationError,
+    ModelaClientError,
+    ModelaError,
+    ModelaNotFoundError,
+    ModelaServerError,
+    ModelaValidationError,
+)
 from .schemas.chat_completion_chunk import ChatCompletionChunk
+from .schemas.chat_completion_extensions import ChatCompletionExtensions
 from .schemas.chat_completion_request import ChatCompletionRequest, CompletionMessage
 from .schemas.chat_completion_response import ChatCompletionResponse
 from .schemas.scan_file_request import ScanFileRequest
@@ -32,11 +43,11 @@ logger = logging.getLogger(__name__)
 class ModelaClient(BaseClient):
     def __init__(
         self,
-        base_url: Optional[str] = None,
-        api_token: Optional[str] = None,
-        timeout: Optional[int] = None,
-        session: Optional[requests.Session] = None,
-        stream_read_timeout: Optional[float] = None,
+        base_url: str | None = None,
+        api_token: str | None = None,
+        timeout: int | None = None,
+        session: requests.Session | None = None,
+        stream_read_timeout: float | None = None,
     ):
         if base_url is None:
             base_url = get_settings().modela_api_url
@@ -65,14 +76,16 @@ class ModelaClient(BaseClient):
     def complete(
         self,
         messages: list[CompletionMessage],
-        model: Optional[str] = None,
-        extra_body: Optional[dict[str, Any]] = None,
+        model: str | None = None,
+        extra_body: dict[str, Any] | None = None,
+        include: list[CompletionInclude] | None = None,
         project_id: str = "*",
     ) -> ChatCompletionResponse:
         request = ChatCompletionRequest(
             messages=messages,
             model=model,
             extra_body=extra_body,
+            include=include,
         )
         response = self._make_request(
             HTTPMethods.POST,
@@ -85,8 +98,9 @@ class ModelaClient(BaseClient):
     async def stream_complete(
         self,
         messages: list[CompletionMessage],
-        model: Optional[str] = None,
-        extra_body: Optional[dict[str, Any]] = None,
+        model: str | None = None,
+        extra_body: dict[str, Any] | None = None,
+        include: list[CompletionInclude] | None = None,
         project_id: str = "*",
     ) -> AsyncIterator[ChatCompletionChunk]:
         """Stream a chat completion from Modela as parsed SSE chunks.
@@ -98,6 +112,7 @@ class ModelaClient(BaseClient):
             messages=messages,
             model=model,
             extra_body=extra_body,
+            include=include,
         )
         payload = request.model_dump(mode="json", exclude_none=True)
         payload["stream"] = True
@@ -148,40 +163,79 @@ class ModelaClient(BaseClient):
         await response.aread()
         class_name = self.__class__.__name__
         try:
-            detail = response.json().get("detail")
+            payload = response.json()
+            detail = payload.get("detail")
         except (ValueError, KeyError, AttributeError):
+            payload = {}
             detail = response.text
+        events = self._events_from_payload(payload)
         if response.status_code == 401:
-            raise TesseraAuthenticationError(
-                f"[{class_name}] /chat/completions: {detail or 'Authentication failed'}"
+            raise ModelaAuthenticationError(
+                f"[{class_name}] /chat/completions: {detail or 'Authentication failed'}",
+                events=events,
             )
         if response.status_code == 404:
-            raise TesseraNotFoundError(
-                f"[{class_name}] /chat/completions: {detail or 'Resource not found'}"
+            raise ModelaNotFoundError(
+                f"[{class_name}] /chat/completions: {detail or 'Resource not found'}",
+                events=events,
             )
         if response.status_code == 400:
-            raise TesseraValidationError(
-                f"[{class_name}] /chat/completions: {detail or 'Bad request'}"
+            raise ModelaValidationError(
+                f"[{class_name}] /chat/completions: {detail or 'Bad request'}",
+                events=events,
             )
         if 400 <= response.status_code < 500:
-            raise TesseraClientError(
+            raise ModelaClientError(
                 f"[{class_name}] /chat/completions: {response.status_code} {detail}",
                 response.status_code,
+                events=events,
             )
         if 500 <= response.status_code < 600:
-            raise TesseraServerError(
+            raise ModelaServerError(
                 f"[{class_name}] Server error: {response.status_code}",
                 response.status_code,
+                events=events,
             )
-        raise TesseraError(
-            f"[{class_name}] Unexpected status code: {response.status_code}"
+        raise ModelaError(
+            f"[{class_name}] Unexpected status code: {response.status_code}",
+            response.status_code,
+            events=events,
         )
+
+    def _prepare_http_error(
+        self, error: TesseraError, response: requests.Response
+    ) -> TesseraError:
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = {}
+        events = self._events_from_payload(payload)
+        error_type = {
+            TesseraAuthenticationError: ModelaAuthenticationError,
+            TesseraNotFoundError: ModelaNotFoundError,
+            TesseraValidationError: ModelaValidationError,
+            TesseraClientError: ModelaClientError,
+            TesseraServerError: ModelaServerError,
+        }.get(type(error), ModelaError)
+        if error_type in (ModelaClientError, ModelaServerError, ModelaError):
+            return error_type(str(error), error.status_code, events=events)
+        return error_type(str(error), events=events)
+
+    @staticmethod
+    def _events_from_payload(payload: Any) -> tuple[Event, ...]:
+        try:
+            extensions = ChatCompletionExtensions.model_validate(
+                (payload or {}).get("extensions", {})
+            )
+        except (AttributeError, ValueError):
+            return ()
+        return tuple(extensions.events)
 
     def scan_file(
         self,
         file_url: str,
-        mime_type: Optional[str] = None,
-        model: Optional[str] = None,
+        mime_type: str | None = None,
+        model: str | None = None,
         project_id: str = "*",
     ) -> ScanResponse:
         request = ScanFileRequest(
@@ -200,7 +254,7 @@ class ModelaClient(BaseClient):
     def summarize_text(
         self,
         content: str,
-        model: Optional[str] = None,
+        model: str | None = None,
         project_id: str = "*",
     ) -> SummarizeResponse:
         request = SummarizeTextRequest(
@@ -218,8 +272,8 @@ class ModelaClient(BaseClient):
     def summarize_file(
         self,
         file_url: str,
-        mime_type: Optional[str] = None,
-        model: Optional[str] = None,
+        mime_type: str | None = None,
+        model: str | None = None,
         project_id: str = "*",
     ) -> SummarizeResponse:
         request = SummarizeFileRequest(

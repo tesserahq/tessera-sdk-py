@@ -84,6 +84,12 @@ class BaseClient:
         except ImportError:
             return "unknown"
 
+    def _prepare_http_error(
+        self, error: TesseraError, response: requests.Response
+    ) -> TesseraError:
+        """Allow a service client to enrich an HTTP error without duplicating I/O."""
+        return error
+
     def _make_request(
         self,
         method: str,
@@ -152,19 +158,28 @@ class BaseClient:
                     detail = response.json().get("detail", "Authentication failed")
                 except (ValueError, KeyError):
                     detail = "Authentication failed"
-                raise TesseraAuthenticationError(f"[{class_name}] {endpoint}: {detail}")
+                raise self._prepare_http_error(
+                    TesseraAuthenticationError(f"[{class_name}] {endpoint}: {detail}"),
+                    response,
+                )
             elif response.status_code == 404:
                 try:
                     detail = response.json().get("detail", "Resource not found")
                 except (ValueError, KeyError):
                     detail = "Resource not found"
-                raise TesseraNotFoundError(f"[{class_name}] {endpoint}: {detail}")
+                raise self._prepare_http_error(
+                    TesseraNotFoundError(f"[{class_name}] {endpoint}: {detail}"),
+                    response,
+                )
             elif response.status_code == 400:
                 try:
                     detail = response.json().get("detail", "Bad request")
                 except (ValueError, KeyError):
                     detail = "Bad request"
-                raise TesseraValidationError(f"[{class_name}] {endpoint}: {detail}")
+                raise self._prepare_http_error(
+                    TesseraValidationError(f"[{class_name}] {endpoint}: {detail}"),
+                    response,
+                )
             elif 400 <= response.status_code < 500:
                 try:
                     detail = response.json().get(
@@ -172,9 +187,12 @@ class BaseClient:
                     )
                 except (ValueError, KeyError):
                     detail = response.text or "Client error"
-                raise TesseraClientError(
-                    f"[{class_name}] {endpoint}: {response.status_code} {detail}",
-                    response.status_code,
+                raise self._prepare_http_error(
+                    TesseraClientError(
+                        f"[{class_name}] {endpoint}: {response.status_code} {detail}",
+                        response.status_code,
+                    ),
+                    response,
                 )
             elif 500 <= response.status_code < 600:
                 logger.error(
@@ -184,13 +202,19 @@ class BaseClient:
                     response.url,
                     response.text,
                 )
-                raise TesseraServerError(
-                    f"[{class_name}] Server error: {response.status_code}",
-                    response.status_code,
+                raise self._prepare_http_error(
+                    TesseraServerError(
+                        f"[{class_name}] Server error: {response.status_code}",
+                        response.status_code,
+                    ),
+                    response,
                 )
             else:
-                raise TesseraError(
-                    f"[{class_name}] Unexpected status code: {response.status_code}"
+                raise self._prepare_http_error(
+                    TesseraError(
+                        f"[{class_name}] Unexpected status code: {response.status_code}"
+                    ),
+                    response,
                 )
 
         except requests.exceptions.RequestException as e:

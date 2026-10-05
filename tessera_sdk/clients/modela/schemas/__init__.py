@@ -3,6 +3,10 @@ from .chat_completion_chunk import (
     ChatCompletionChunkChoice,
     ChatCompletionChunkDelta,
 )
+from .chat_completion_extensions import (
+    ChatCompletionChunkExtensions,
+    ChatCompletionExtensions,
+)
 from .chat_completion_request import ChatCompletionRequest, CompletionMessage
 from .chat_completion_response import (
     ChatCompletionResponse,
@@ -19,6 +23,8 @@ __all__ = [
     "ChatCompletionChunk",
     "ChatCompletionChunkChoice",
     "ChatCompletionChunkDelta",
+    "ChatCompletionChunkExtensions",
+    "ChatCompletionExtensions",
     "ChatCompletionRequest",
     "ChatCompletionResponse",
     "CompletionChoice",

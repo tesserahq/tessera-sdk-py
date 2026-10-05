@@ -1,17 +1,17 @@
-from typing import Optional
-
 from pydantic import BaseModel
+
+from .chat_completion_extensions import ChatCompletionChunkExtensions
 
 
 class ChatCompletionChunkDelta(BaseModel):
-    role: Optional[str] = None
-    content: Optional[str] = None
+    role: str | None = None
+    content: str | None = None
 
 
 class ChatCompletionChunkChoice(BaseModel):
     index: int
     delta: ChatCompletionChunkDelta
-    finish_reason: Optional[str] = None
+    finish_reason: str | None = None
 
 
 class ChatCompletionChunk(BaseModel):
@@ -20,3 +20,4 @@ class ChatCompletionChunk(BaseModel):
     created: int
     model: str
     choices: list[ChatCompletionChunkChoice]
+    extensions: ChatCompletionChunkExtensions | None = None

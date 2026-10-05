@@ -107,6 +107,42 @@ queuing work is not equivalent to completing that work.
 `CompletionInclude` contains the opt-in response channel names. It does not grant
 access: Modela still applies authorization before including diagnostic data.
 
+## Consuming completion extensions
+
+`ModelaClient` exposes the optional channels as first-class completion inputs.
+The response models preserve them as typed SDK contracts, so applications do not
+need to inspect arbitrary dictionaries or duplicate event and execution models.
+
+```python
+from tessera_sdk.clients.modela import CompletionMessage, ModelaClient
+from tessera_sdk.mcp import CompletionInclude
+
+client = ModelaClient(api_token="...")
+response = client.complete(
+    [CompletionMessage(role="user", content="Create Jane as a person")],
+    include=[CompletionInclude.EVENTS],
+)
+
+for event in response.extensions.events if response.extensions else ():
+    if event.event_type == "person.created":
+        refresh_people()
+```
+
+Streaming completions carry one `event` or `tool_execution` per extension chunk;
+these chunks can have an empty `choices` list and must still be consumed. The
+non-streaming response carries the corresponding plural lists. Existing callers
+that request neither channel and read only completion choices are unchanged.
+
+If a completion fails after a domain operation committed, Modela may return the
+committed events in the error body. Modela-specific SDK exceptions preserve them
+on `error.events`, allowing a UI to reconcile state even though no normal
+completion response exists. Tool execution diagnostics are not attached to
+exceptions.
+
+For compatibility, callers may continue to place `include` under `extra_body`.
+New code should use the first-class `include` argument. Supplying both is allowed
+only when the values match; conflicting values fail request validation locally.
+
 `parse_mcp_metadata` validates the event envelope, MCP origin, transport limits,
 and the structural shape of `event_data`; it cannot determine whether a value in
 a domain-owned object is sensitive. Each producing service owns and reviews its
