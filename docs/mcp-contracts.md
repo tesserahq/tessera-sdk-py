@@ -21,8 +21,8 @@ existing MCP capability.
 
 The SDK centralizes this wire contract so every Tessera service and future plugin
 uses the same vocabulary. Service repositories own their domain behavior, Modela
-owns completion orchestration, and this package owns only the shared types,
-parsing rules, limits, schemas, fixtures, and contract-validation primitives.
+owns completion orchestration, and this package owns only the shared Python
+types, parsing rules, limits, fixtures, and contract-validation primitives.
 
 ## Mental model and ownership
 
@@ -118,10 +118,9 @@ control, not a replacement for producer-side data minimization.
 
 Providers adopting this contract must keep their normal MCP results and advertised
 output schemas unchanged. Provider repositories should protect that behavior with
-integration tests against their real tools; the shared SDK conformance harness is
-deferred to [tessera-sdk issue #117](https://github.com/tesserahq/tessera-sdk-py/issues/117)
-so its interface can be driven by the first real provider migration rather than a
-speculative snapshot format.
+integration tests against their real tools. The current controlled providers are
+Python services that import these contracts directly, so the SDK does not add a
+generic provider-certification harness.
 
 The JSON examples bundled under `tessera_sdk.mcp.fixtures` exercise the public
 parser using the same payload shape emitted by controlled Python providers.
@@ -130,7 +129,7 @@ parser using the same payload shape emitted by controlled Python providers.
 
 - Keep metadata additive. Never move required model-facing data out of the normal
   MCP result and into `_meta`.
-- Define reusable wire types, validation, limits, fixtures, and schemas here—not
+- Define reusable Python types, validation, limits, and fixtures here—not
   independently in Modela, a service, or a plugin.
 - Keep domain semantics in the owning service. This SDK validates structure, not
   whether a `person.created` event is factually correct.

@@ -36,11 +36,9 @@ The SDK's metadata tests load these files through `load_contract_fixture` and
 pass them through the public parser. Controlled Python MCP providers import the
 SDK models and parser directly rather than maintaining another schema format.
 
-The shared provider-conformance harness is not part of the current release; it
-is tracked in
-[tessera-sdk issue #117](https://github.com/tesserahq/tessera-sdk-py/issues/117).
-Until that work is implemented, these are parser contract fixtures rather than
-a complete certification suite for an MCP provider.
+These are focused parser examples, not a certification suite. Controlled
+providers protect their actual tool discovery and result compatibility through
+integration tests in the provider repository.
 
 ## Maintenance rules
 

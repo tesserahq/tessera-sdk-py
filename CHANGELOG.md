@@ -9,5 +9,4 @@
 - Publish representative metadata fixtures for the Python parser contract.
 
 The MCP contracts are additive. Existing SDK APIs and metadata-free MCP tools are
-unchanged. Provider conformance automation is deferred to
-[issue #117](https://github.com/tesserahq/tessera-sdk-py/issues/117).
+unchanged.
