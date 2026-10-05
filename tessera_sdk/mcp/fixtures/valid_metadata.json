@@ -1,0 +1,22 @@
+{
+  "com.tesserahq/events": [
+    {
+      "id": "event-123",
+      "source": "/fixtures/people",
+      "spec_version": "1.0",
+      "event_type": "person.created",
+      "time": "2026-01-15T10:30:00Z",
+      "subject": "/persons/person-123",
+      "tags": ["origin:mcp"],
+      "event_data": {
+        "resource": {"type": "person", "id": "person-123"},
+        "related": [{"type": "account", "id": "account-456"}],
+        "changed_fields": []
+      }
+    }
+  ],
+  "com.tesserahq/debug": {
+    "arguments": {"account_id": "account-456"},
+    "result": {"person_id": "person-123"}
+  }
+}

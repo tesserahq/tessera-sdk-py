@@ -47,6 +47,12 @@ for plain `postgresql://` URLs. Services pass a plain `postgresql://` URL to
 `DatabaseManager` and should not declare their own driver (drop
 `psycopg2-binary`).
 
+## MCP contracts
+
+Services and plugins that expose MCP tools use `tessera_sdk.mcp` for shared event,
+diagnostic, and metadata contracts. See
+[docs/mcp-contracts.md](docs/mcp-contracts.md).
+
 ## Redis configuration
 
 Redis-backed SDK features prefer `REDIS_URL`. Authenticated deployments should
