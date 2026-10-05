@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Fix the authorization cache reading a different key (`authorized`) than it
+  writes (`allowed`): with `AUTHORIZATION_CACHE_ENABLED=true`, every cached
+  decision, including allowed ones, was answered with 403.
+
 ## 0.2.0
 
 - Add shared MCP event, diagnostic, origin-tag, and completion-channel contracts.
