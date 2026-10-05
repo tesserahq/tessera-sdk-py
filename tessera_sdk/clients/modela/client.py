@@ -11,22 +11,8 @@ from ...constants import HTTPMethods
 from ...infra.events import Event
 from ...mcp import CompletionInclude
 from .._base.client import BaseClient
-from .._base.exceptions import (
-    TesseraAuthenticationError,
-    TesseraClientError,
-    TesseraError,
-    TesseraNotFoundError,
-    TesseraServerError,
-    TesseraValidationError,
-)
-from .exceptions import (
-    ModelaAuthenticationError,
-    ModelaClientError,
-    ModelaError,
-    ModelaNotFoundError,
-    ModelaServerError,
-    ModelaValidationError,
-)
+from .._base.exceptions import TesseraError
+from .exceptions import _ModelaErrorFactory
 from .schemas.chat_completion_chunk import ChatCompletionChunk
 from .schemas.chat_completion_extensions import ChatCompletionExtensions
 from .schemas.chat_completion_request import ChatCompletionRequest, CompletionMessage
@@ -169,36 +155,10 @@ class ModelaClient(BaseClient):
             payload = {}
             detail = response.text
         events = self._events_from_payload(payload)
-        if response.status_code == 401:
-            raise ModelaAuthenticationError(
-                f"[{class_name}] /chat/completions: {detail or 'Authentication failed'}",
-                events=events,
-            )
-        if response.status_code == 404:
-            raise ModelaNotFoundError(
-                f"[{class_name}] /chat/completions: {detail or 'Resource not found'}",
-                events=events,
-            )
-        if response.status_code == 400:
-            raise ModelaValidationError(
-                f"[{class_name}] /chat/completions: {detail or 'Bad request'}",
-                events=events,
-            )
-        if 400 <= response.status_code < 500:
-            raise ModelaClientError(
-                f"[{class_name}] /chat/completions: {response.status_code} {detail}",
-                response.status_code,
-                events=events,
-            )
-        if 500 <= response.status_code < 600:
-            raise ModelaServerError(
-                f"[{class_name}] Server error: {response.status_code}",
-                response.status_code,
-                events=events,
-            )
-        raise ModelaError(
-            f"[{class_name}] Unexpected status code: {response.status_code}",
-            response.status_code,
+        raise _ModelaErrorFactory.from_http_status(
+            status_code=response.status_code,
+            context=f"[{class_name}] /chat/completions",
+            detail=detail,
             events=events,
         )
 
@@ -210,16 +170,7 @@ class ModelaClient(BaseClient):
         except ValueError:
             payload = {}
         events = self._events_from_payload(payload)
-        error_type = {
-            TesseraAuthenticationError: ModelaAuthenticationError,
-            TesseraNotFoundError: ModelaNotFoundError,
-            TesseraValidationError: ModelaValidationError,
-            TesseraClientError: ModelaClientError,
-            TesseraServerError: ModelaServerError,
-        }.get(type(error), ModelaError)
-        if error_type in (ModelaClientError, ModelaServerError, ModelaError):
-            return error_type(str(error), error.status_code, events=events)
-        return error_type(str(error), events=events)
+        return _ModelaErrorFactory.from_tessera_error(error, events)
 
     @staticmethod
     def _events_from_payload(payload: Any) -> tuple[Event, ...]:
