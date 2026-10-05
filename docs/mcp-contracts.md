@@ -123,9 +123,8 @@ deferred to [tessera-sdk issue #117](https://github.com/tesserahq/tessera-sdk-py
 so its interface can be driven by the first real provider migration rather than a
 speculative snapshot format.
 
-The canonical JSON fixtures bundled under `tessera_sdk.mcp.fixtures` and the
-language-neutral JSON Schema exposed by `load_contract_schema` remain available
-for ordinary contract validation and providers implemented outside Python.
+The JSON examples bundled under `tessera_sdk.mcp.fixtures` exercise the public
+parser using the same payload shape emitted by controlled Python providers.
 
 ## Rules for future changes
 
@@ -142,5 +141,5 @@ for ordinary contract validation and providers implemented outside Python.
 - Preserve event compatibility with Tessera's existing `Event`/CloudEvent shape.
   Use the single `origin:*` tag to distinguish the MCP delivery path; do not add a
   parallel event vocabulary merely for completion clients.
-- Update the Python models, generated/bundled JSON Schema, canonical fixtures,
-  contract tests, and this guide together when the wire contract changes.
+- Update the Python models, parser fixtures, contract tests, and this guide
+  together when the wire contract changes.

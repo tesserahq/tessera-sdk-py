@@ -2,8 +2,7 @@
 
 This directory contains example JSON payloads for the Tessera-owned portion of
 an MCP tool result's `_meta` object. The fixtures exercise the same wire format
-parsed by `tessera_sdk.mcp.parse_mcp_metadata` and described by
-`../schemas/metadata.schema.json`.
+parsed by `tessera_sdk.mcp.parse_mcp_metadata`.
 
 These files do not represent complete MCP tool results. A tool's normal
 `content`, `structuredContent`, and `isError` fields remain outside `_meta` and
@@ -34,8 +33,8 @@ that `origin:mcp` cannot be combined with another origin.
 ## How the fixtures are used
 
 The SDK's metadata tests load these files through `load_contract_fixture` and
-pass them through the public parser. Keeping representative payloads as JSON
-also makes the wire examples readable by services implemented outside Python.
+pass them through the public parser. Controlled Python MCP providers import the
+SDK models and parser directly rather than maintaining another schema format.
 
 The shared provider-conformance harness is not part of the current release; it
 is tracked in
@@ -47,10 +46,9 @@ a complete certification suite for an MCP provider.
 
 - Keep fixtures free of real customer or production data.
 - Use distinctive synthetic identifiers and non-sensitive values.
-- Keep valid fixtures synchronized with the generated metadata schema and public
-  parser behavior.
+- Keep valid fixtures synchronized with the public parser behavior.
 - Give every invalid fixture one clear contract violation and a test that asserts
   its rejection.
-- Add a fixture only when a language-neutral wire example is clearer or more
-  reusable than constructing the value inside a Python test.
+- Add a fixture only when a reusable wire example is clearer than constructing
+  the value inside a Python test.
 - Update this index whenever a fixture is added, removed, or changes meaning.

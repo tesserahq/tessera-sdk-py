@@ -3,15 +3,11 @@ from pydantic import ValidationError
 
 from tessera_sdk.mcp import (
     CompletionInclude,
-    MCPEvent,
     PublicEventData,
     ResourceReference,
     ToolExecutionRecord,
     ToolExecutionStatus,
     TruncationMarker,
-    contract_json_schemas,
-    load_contract_schema,
-    mcp_metadata_json_schema,
 )
 
 
@@ -45,43 +41,3 @@ def test_truncation_marker_uses_completion_channel():
         "truncated": True,
         "dropped_count": 3,
     }
-
-
-def test_contract_schema_bundle_contains_public_models():
-    schemas = contract_json_schemas()
-
-    assert set(schemas) == {
-        "MCPEvent",
-        "MCPMetadata",
-        "PublicEventData",
-        "ResourceReference",
-        "ToolDebug",
-        "ToolExecutionRecord",
-        "TruncationMarker",
-    }
-
-
-def test_language_neutral_schema_is_bundled():
-    schema = load_contract_schema()
-
-    assert schema["$id"] == "https://schemas.tessera.dev/mcp/metadata/v1"
-    assert "com.tesserahq/events" in schema["properties"]
-
-
-def test_bundled_schema_is_generated_from_contract_models():
-    assert load_contract_schema() == mcp_metadata_json_schema()
-
-
-def test_language_neutral_schema_matches_parser_invariants():
-    schema = load_contract_schema()
-    event_schema = schema["$defs"][MCPEvent.__name__]
-
-    assert schema["propertyNames"] == {
-        "not": {"enum": ["events", "debug"]},
-    }
-    assert set(event_schema["required"]) >= {"id", "time", "tags"}
-    assert event_schema["properties"]["event_data"]["anyOf"] == [
-        {"additionalProperties": True, "type": "object"},
-        {"type": "null"},
-    ]
-    assert event_schema["properties"]["tags"]["contains"] == {"const": "origin:mcp"}

@@ -19,12 +19,7 @@ from .metadata import (
     parse_mcp_metadata,
 )
 from .origin import ORIGIN_TAG_PREFIX, get_origin, set_origin
-from .resources import (
-    contract_json_schemas,
-    load_contract_fixture,
-    load_contract_schema,
-    mcp_metadata_json_schema,
-)
+from .resources import load_contract_fixture
 
 __all__ = [
     "MCP_DEBUG_META_KEY",
@@ -41,11 +36,8 @@ __all__ = [
     "ToolExecutionRecord",
     "ToolExecutionStatus",
     "TruncationMarker",
-    "contract_json_schemas",
     "get_origin",
     "load_contract_fixture",
-    "load_contract_schema",
-    "mcp_metadata_json_schema",
     "parse_mcp_metadata",
     "set_origin",
 ]
