@@ -22,7 +22,7 @@ existing MCP capability.
 The SDK centralizes this wire contract so every Tessera service and future plugin
 uses the same vocabulary. Service repositories own their domain behavior, Modela
 owns completion orchestration, and this package owns only the shared types,
-parsing rules, limits, schemas, fixtures, and compatibility checks.
+parsing rules, limits, schemas, fixtures, and contract-validation primitives.
 
 ## Mental model and ownership
 
@@ -32,7 +32,6 @@ parsing rules, limits, schemas, fixtures, and compatibility checks.
 | Domain event | Tool provider | Modela, then application clients | A committed business outcome such as `person.created` |
 | Tool execution record | Modela | Authorized completion clients | Orchestration telemetry: which tool ran, its status, order, and duration |
 | Debug projection | Tool provider | Authorized operators through Modela | Deliberately selected arguments/results for diagnosis |
-| Conformance report | Provider tests or CI | Provider developers | Whether metadata was added without breaking the existing MCP contract |
 
 Domain events and tool execution records are deliberately separate. A tool can
 execute successfully without changing domain state, and one tool invocation can
@@ -101,42 +100,18 @@ queuing work is not equivalent to completing that work.
 `CompletionInclude` contains the opt-in response channel names. It does not grant
 access: Modela still applies authorization before including diagnostic data.
 
-## Provider conformance
+## Provider compatibility
 
-`check_provider_contract` compares `tools/list` and representative `tools/call`
-snapshots before and after metadata adoption. It verifies that existing tools and
-output schemas remain stable, normal results are unchanged, and additive metadata
-is valid. Canonical JSON fixtures are bundled under `tessera_sdk.mcp.fixtures` and
-can be consumed through `load_contract_fixture`. A language-neutral JSON Schema is
-bundled under `tessera_sdk.mcp.schemas` and exposed by `load_contract_schema` for
-providers implemented outside Python.
+Providers adopting this contract must keep their normal MCP results and advertised
+output schemas unchanged. Provider repositories should protect that behavior with
+integration tests against their real tools; the shared SDK conformance harness is
+deferred to [tessera-sdk issue #117](https://github.com/tesserahq/tessera-sdk-py/issues/117)
+so its interface can be driven by the first real provider migration rather than a
+speculative snapshot format.
 
-Conformance is a test-time migration check, not a class hierarchy that tools must
-inherit from and not a runtime wrapper around tool calls. A provider captures its
-existing MCP responses as the `before` values, adds Tessera metadata, captures the
-new responses as the `after` values, and compares them in a test:
-
-```python
-from tessera_sdk.mcp import check_provider_contract
-
-report = check_provider_contract(
-    tools_before=tools_list_before,
-    tools_after=tools_list_after,
-    results_before={"create_person": create_person_result_before},
-    results_after={"create_person": create_person_result_after},
-)
-
-report.raise_for_errors()
-```
-
-The report contains `ConformanceViolation` entries with a machine-readable
-`code`, a human-readable `message`, and the affected `tool_name` when known. It
-reports all detected problems together. A compliant migration keeps the ordinary
-MCP result intact and only adds valid namespaced `_meta` data.
-
-The conformance report establishes wire compatibility only. It does not approve
-product-specific event data, grant Modela permissions, or make authorization
-decisions.
+The canonical JSON fixtures bundled under `tessera_sdk.mcp.fixtures` and the
+language-neutral JSON Schema exposed by `load_contract_schema` remain available
+for ordinary contract validation and providers implemented outside Python.
 
 ## Rules for future changes
 
@@ -154,4 +129,4 @@ decisions.
   Use the single `origin:*` tag to distinguish the MCP delivery path; do not add a
   parallel event vocabulary merely for completion clients.
 - Update the Python models, generated/bundled JSON Schema, canonical fixtures,
-  conformance tests, and this guide together when the wire contract changes.
+  contract tests, and this guide together when the wire contract changes.

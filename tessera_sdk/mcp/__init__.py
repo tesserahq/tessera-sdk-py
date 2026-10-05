@@ -1,6 +1,5 @@
 """Shared MCP wire contracts for Tessera providers and clients."""
 
-from .conformance import ConformanceReport, check_provider_contract
 from .contracts import (
     CompletionInclude,
     PublicEventData,
@@ -29,7 +28,6 @@ __all__ = [
     "MCP_EVENTS_META_KEY",
     "ORIGIN_TAG_PREFIX",
     "CompletionInclude",
-    "ConformanceReport",
     "MCPMetadata",
     "MetadataLimits",
     "PublicEventData",
@@ -38,7 +36,6 @@ __all__ = [
     "ToolExecutionRecord",
     "ToolExecutionStatus",
     "TruncationMarker",
-    "check_provider_contract",
     "contract_json_schemas",
     "get_origin",
     "load_contract_fixture",

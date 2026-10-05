@@ -60,8 +60,8 @@ def parse_mcp_metadata(
 ) -> MCPMetadata:
     """Parse recognized MCP metadata and enforce transport-safe limits.
 
-    This is the common ingestion boundary used by consumers and conformance
-    tests. Unknown namespaced metadata is intentionally ignored so independent
+    This is the common ingestion boundary used by consumers and contract tests.
+    Unknown namespaced metadata is intentionally ignored so independent
     extensions can coexist. Unnamespaced aliases for Tessera channels are
     rejected so providers cannot accidentally publish a non-portable contract.
 

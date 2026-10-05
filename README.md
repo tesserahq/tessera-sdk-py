@@ -50,7 +50,7 @@ for plain `postgresql://` URLs. Services pass a plain `postgresql://` URL to
 ## MCP contracts
 
 Services and plugins that expose MCP tools use `tessera_sdk.mcp` for shared event,
-diagnostic, metadata, and conformance contracts. See
+diagnostic, and metadata contracts. See
 [docs/mcp-contracts.md](docs/mcp-contracts.md).
 
 ## Redis configuration
