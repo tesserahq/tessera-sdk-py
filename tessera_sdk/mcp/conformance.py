@@ -1,3 +1,11 @@
+"""Compatibility checks for MCP providers adopting Tessera metadata.
+
+This module is intended for provider tests and migration tooling. It compares
+captured ``tools/list`` and ``tools/call`` responses from before and after a
+provider adopts the Tessera metadata contract. It does not execute tools,
+register an MCP server, or enforce policy at runtime.
+"""
+
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -7,6 +15,13 @@ from .metadata import MCPMetadata, MetadataLimits, parse_mcp_metadata
 
 
 class ConformanceViolation(BaseModel):
+    """One provider compatibility problem found by a conformance check.
+
+    ``code`` is stable enough for tests and automation, while ``message`` is a
+    human-readable explanation. ``tool_name`` is absent for snapshot-level
+    problems that cannot be attributed to one valid tool name.
+    """
+
     model_config = ConfigDict(frozen=True)
 
     code: str
@@ -15,15 +30,26 @@ class ConformanceViolation(BaseModel):
 
 
 class ConformanceReport(BaseModel):
+    """Immutable result of checking an MCP provider migration.
+
+    A report collects every problem it can find so a provider author can fix a
+    migration in one pass. Inspect :attr:`compliant` for branching or call
+    :meth:`raise_for_errors` in a test that should fail immediately.
+    """
+
     model_config = ConfigDict(frozen=True)
 
     violations: tuple[ConformanceViolation, ...] = ()
 
     @property
     def compliant(self) -> bool:
+        """Whether the compared provider snapshots are wire-compatible."""
+
         return not self.violations
 
     def raise_for_errors(self) -> None:
+        """Raise ``ValueError`` containing all violations when non-compliant."""
+
         if self.violations:
             details = "; ".join(item.message for item in self.violations)
             raise ValueError(f"MCP provider contract is not compliant: {details}")
@@ -37,7 +63,26 @@ def check_provider_contract(
     results_after: Mapping[str, Mapping[str, Any]] | None = None,
     limits: MetadataLimits | None = None,
 ) -> ConformanceReport:
-    """Compare provider snapshots and validate metadata-bearing call results."""
+    """Compare MCP provider snapshots before and after metadata adoption.
+
+    The tool sequences are raw entries captured from ``tools/list``. The result
+    mappings associate a tool name with a representative raw ``tools/call``
+    result. The check verifies that:
+
+    * existing tools were not removed;
+    * existing ``outputSchema`` values did not change;
+    * normal result fields (``content``, ``structuredContent``, and ``isError``)
+      remain identical when both result snapshots are supplied; and
+    * any new Tessera ``_meta`` payload is valid and transport-safe.
+
+    Result snapshots are optional because discovery compatibility can be tested
+    independently. Tools newly added to ``tools_after`` are allowed. The
+    function returns all discovered violations instead of raising, which makes
+    it suitable for assertions and CI diagnostics.
+
+    This is not a security boundary and does not call tools or validate whether
+    their domain events are semantically correct.
+    """
     violations: list[ConformanceViolation] = []
     before_by_name = _tools_by_name(tools_before, violations, "before")
     after_by_name = _tools_by_name(tools_after, violations, "after")

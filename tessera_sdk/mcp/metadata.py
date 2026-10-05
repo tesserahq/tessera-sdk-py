@@ -1,3 +1,5 @@
+"""Parsing and safety limits for Tessera data in an MCP result's ``_meta``."""
+
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -16,6 +18,12 @@ MCP_DEBUG_META_KEY = "com.tesserahq/debug"
 
 @dataclass(frozen=True)
 class MetadataLimits:
+    """Resource limits applied before metadata becomes an in-memory contract.
+
+    These bounds protect ingestion latency and memory use. Applications may
+    provide stricter values, but providers cannot use them to bypass validation.
+    """
+
     max_events: int = 100
     max_event_bytes: int = 256 * 1024
     max_debug_bytes: int = 1024 * 1024
@@ -24,6 +32,14 @@ class MetadataLimits:
 
 
 class MCPMetadata(BaseModel):
+    """The Tessera-owned channels recognized in an MCP tool result.
+
+    ``events`` contains committed domain outcomes intended for reactive clients.
+    ``debug`` is an optional, provider-selected diagnostic projection. Normal MCP
+    ``content`` and ``structuredContent`` remain outside this model and continue
+    to carry the complete tool response.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
     events: list[Event] = Field(default_factory=list)
@@ -44,9 +60,14 @@ def parse_mcp_metadata(
 ) -> MCPMetadata:
     """Parse recognized MCP metadata and enforce transport-safe limits.
 
-    Unknown namespaced metadata is intentionally ignored. Unnamespaced aliases for
-    Tessera channels are rejected so providers cannot accidentally publish a
-    non-portable contract.
+    This is the common ingestion boundary used by consumers and conformance
+    tests. Unknown namespaced metadata is intentionally ignored so independent
+    extensions can coexist. Unnamespaced aliases for Tessera channels are
+    rejected so providers cannot accidentally publish a non-portable contract.
+
+    The returned object contains only Tessera-owned channels. This function does
+    not alter or replace the normal MCP result and does not make authorization
+    decisions about who may see diagnostic data.
     """
     raw = dict(meta or {})
     if "events" in raw or "debug" in raw:
