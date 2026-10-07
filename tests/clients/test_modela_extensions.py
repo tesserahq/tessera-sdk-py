@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import httpx
@@ -26,7 +27,7 @@ from tessera_sdk.clients.modela.schemas import (
     CompletionMessage,
 )
 from tessera_sdk.infra.events import Event
-from tessera_sdk.mcp import CompletionInclude, ToolExecutionRecord
+from tessera_sdk.mcp import CompletionInclude, ToolExecutionRecord, TruncationMarker
 
 EVENT = {
     "id": "event-1",
@@ -113,6 +114,123 @@ def test_non_streaming_response_parses_extensions():
     assert response.extensions.tool_executions[0].tool_name == "people.create"
 
 
+def test_non_streaming_response_parses_one_truncation_per_channel():
+    response = ChatCompletionResponse(
+        **{
+            **RESPONSE,
+            "extensions": {
+                "events": [EVENT],
+                "truncations": [
+                    {
+                        "channel": "events",
+                        "truncated": True,
+                        "dropped_count": 2,
+                    },
+                    {
+                        "channel": "tool_executions",
+                        "truncated": True,
+                        "dropped_count": 4,
+                    },
+                ],
+            },
+        }
+    )
+
+    assert response.extensions is not None
+    assert [marker.channel for marker in response.extensions.truncations] == [
+        CompletionInclude.EVENTS,
+        CompletionInclude.TOOL_EXECUTIONS,
+    ]
+    assert all(
+        isinstance(marker, TruncationMarker)
+        for marker in response.extensions.truncations
+    )
+
+
+def test_non_streaming_response_keeps_largest_marker_for_duplicate_channel(caplog):
+    response = ChatCompletionResponse(
+        **{
+            **RESPONSE,
+            "extensions": {
+                "truncations": [
+                    {
+                        "channel": "events",
+                        "truncated": True,
+                        "dropped_count": 2,
+                    },
+                    {
+                        "channel": "events",
+                        "truncated": True,
+                        "dropped_count": 8,
+                    },
+                ]
+            },
+        }
+    )
+
+    assert response.extensions is not None
+    assert [marker.dropped_count for marker in response.extensions.truncations] == [8]
+    assert "duplicate Modela completion truncation marker" in caplog.text
+
+
+def test_non_streaming_response_keeps_marker_for_unknown_channel():
+    response = ChatCompletionResponse(
+        **{
+            **RESPONSE,
+            "extensions": {
+                "truncations": [
+                    {
+                        "channel": "messages",
+                        "truncated": True,
+                        "dropped_count": 3,
+                    },
+                    {
+                        "channel": "events",
+                        "truncated": True,
+                        "dropped_count": 1,
+                    },
+                ]
+            },
+        }
+    )
+
+    assert response.extensions is not None
+    assert [marker.channel for marker in response.extensions.truncations] == [
+        "messages",
+        CompletionInclude.EVENTS,
+    ]
+    assert response.extensions.truncations[0].dropped_count == 3
+
+
+def test_non_streaming_response_drops_only_malformed_truncation_marker():
+    response = ChatCompletionResponse(
+        **{
+            **RESPONSE,
+            "extensions": {
+                "events": [EVENT],
+                "truncations": [
+                    {
+                        "channel": "events",
+                        "truncated": False,
+                        "dropped_count": 9,
+                    },
+                    {
+                        "channel": "tool_executions",
+                        "truncated": True,
+                        "dropped_count": 4,
+                    },
+                ],
+            },
+        }
+    )
+
+    assert response.extensions is not None
+    assert [event.id for event in response.extensions.events] == ["event-1"]
+    assert [marker.channel for marker in response.extensions.truncations] == [
+        CompletionInclude.TOOL_EXECUTIONS
+    ]
+
+
 @pytest.mark.anyio
 async def test_streaming_chunk_preserves_empty_choices_event(monkeypatch):
     chunk = {
@@ -192,6 +310,39 @@ async def test_streaming_chunk_parses_tool_execution(monkeypatch):
     assert chunks[0].extensions.tool_execution.call_id == "call-1"
 
 
+@pytest.mark.anyio
+async def test_streaming_chunk_parses_truncation_marker(monkeypatch):
+    chunk = {
+        "id": "chatcmpl-1",
+        "object": "chat.completion.chunk",
+        "created": 1,
+        "model": "model",
+        "choices": [],
+        "extensions": {
+            "truncation": {
+                "channel": "events",
+                "truncated": True,
+                "dropped_count": 3,
+            }
+        },
+    }
+    _patch_stream(monkeypatch, chunk)
+    client = ModelaClient(base_url="https://modela.example.com")
+
+    chunks = [
+        item
+        async for item in client.stream_complete(
+            [CompletionMessage(role="user", content="Create a person")],
+            include=[CompletionInclude.EVENTS],
+        )
+    ]
+
+    assert chunks[0].extensions is not None
+    assert chunks[0].extensions.truncation is not None
+    assert chunks[0].extensions.truncation.channel is CompletionInclude.EVENTS
+    assert chunks[0].extensions.truncation.dropped_count == 3
+
+
 def test_completion_error_exposes_committed_events():
     response = requests.Response()
     response.status_code = 500
@@ -209,6 +360,74 @@ def test_completion_error_exposes_committed_events():
         client.complete([CompletionMessage(role="user", content="Create a person")])
 
     assert error.value.events[0].id == "event-1"
+
+
+def test_completion_error_exposes_event_truncation_marker():
+    response = requests.Response()
+    response.status_code = 500
+    response.url = "https://modela.example.com/chat/completions"
+    response._content = json.dumps(
+        {
+            "detail": "provider failed",
+            "extensions": {
+                "events": [EVENT],
+                "truncations": [
+                    {
+                        "channel": "events",
+                        "truncated": True,
+                        "dropped_count": 2,
+                    }
+                ],
+            },
+        }
+    ).encode()
+    response.headers["Content-Type"] = "application/json"
+    session = Mock()
+    session.headers = {}
+    session.request.return_value = response
+    client = ModelaClient(base_url="https://modela.example.com", session=session)
+
+    with pytest.raises(ModelaServerError) as error:
+        client.complete([CompletionMessage(role="user", content="Create a person")])
+
+    assert error.value.truncations[0].channel is CompletionInclude.EVENTS
+    assert error.value.truncations[0].dropped_count == 2
+
+
+def test_completion_error_omits_markers_for_channels_not_on_exceptions():
+    response = requests.Response()
+    response.status_code = 500
+    response.url = "https://modela.example.com/chat/completions"
+    response._content = json.dumps(
+        {
+            "detail": "provider failed",
+            "extensions": {
+                "tool_executions": [TOOL_EXECUTION],
+                "truncations": [
+                    {
+                        "channel": "tool_executions",
+                        "truncated": True,
+                        "dropped_count": 4,
+                    },
+                    {
+                        "channel": "messages",
+                        "truncated": True,
+                        "dropped_count": 1,
+                    },
+                ],
+            },
+        }
+    ).encode()
+    response.headers["Content-Type"] = "application/json"
+    session = Mock()
+    session.headers = {}
+    session.request.return_value = response
+    client = ModelaClient(base_url="https://modela.example.com", session=session)
+
+    with pytest.raises(ModelaServerError) as error:
+        client.complete([CompletionMessage(role="user", content="Create a person")])
+
+    assert error.value.truncations == ()
 
 
 @pytest.mark.anyio
@@ -289,6 +508,40 @@ def _patch_stream(monkeypatch, *chunks):
 
 
 @pytest.mark.anyio
+async def test_streaming_yields_only_growing_truncation_markers(monkeypatch):
+    def marker(dropped_count):
+        return _chunk(
+            extensions={
+                "truncation": {
+                    "channel": "events",
+                    "truncated": True,
+                    "dropped_count": dropped_count,
+                }
+            }
+        )
+
+    _patch_stream(monkeypatch, marker(2), marker(2), marker(5), marker(3))
+    client = ModelaClient(base_url="https://modela.example.com")
+
+    chunks = [
+        item
+        async for item in client.stream_complete(
+            [CompletionMessage(role="user", content="Create a person")],
+            include=[CompletionInclude.EVENTS],
+        )
+    ]
+
+    assert [
+        (
+            chunk.extensions.truncation.dropped_count
+            if chunk.extensions.truncation
+            else None
+        )
+        for chunk in chunks
+    ] == [2, None, 5, None]
+
+
+@pytest.mark.anyio
 async def test_streaming_survives_unreadable_extensions(monkeypatch):
     _patch_stream(
         monkeypatch,
@@ -315,6 +568,45 @@ async def test_streaming_survives_unreadable_extensions(monkeypatch):
     assert chunks[2].extensions is not None
     assert chunks[2].extensions.tool_execution is None
     assert chunks[3].extensions is None
+
+
+def test_malformed_truncation_does_not_hide_neighboring_event():
+    chunk = ChatCompletionChunk(
+        **_chunk(
+            extensions={
+                "event": EVENT,
+                "truncation": {
+                    "channel": "events",
+                    "truncated": False,
+                    "dropped_count": 3,
+                },
+            }
+        )
+    )
+
+    assert chunk.extensions is not None
+    assert chunk.extensions.event is not None
+    assert chunk.extensions.event.id == "event-1"
+    assert chunk.extensions.truncation is None
+
+
+def test_truncation_marker_ignores_fields_added_by_newer_modela():
+    chunk = ChatCompletionChunk(
+        **_chunk(
+            extensions={
+                "truncation": {
+                    "channel": "events",
+                    "truncated": True,
+                    "dropped_count": 3,
+                    "budget_bytes": 262144,
+                }
+            }
+        )
+    )
+
+    assert chunk.extensions is not None
+    assert chunk.extensions.truncation is not None
+    assert chunk.extensions.truncation.dropped_count == 3
 
 
 def test_tool_execution_ignores_fields_added_by_newer_modela():
@@ -346,6 +638,28 @@ def test_non_streaming_response_keeps_valid_records_and_drops_invalid_ones():
     assert response.extensions is not None
     assert [e.id for e in response.extensions.events] == ["event-1"]
     assert [t.call_id for t in response.extensions.tool_executions] == ["call-1"]
+
+
+@pytest.mark.parametrize(
+    ("fixture_name", "model"),
+    [
+        ("truncation_chunk.json", ChatCompletionChunk),
+        ("truncated_completion_response.json", ChatCompletionResponse),
+    ],
+)
+def test_documented_truncation_fixtures_match_public_models(fixture_name, model):
+    fixture_path = (
+        Path(__file__).parents[2]
+        / "tessera_sdk"
+        / "clients"
+        / "modela"
+        / "fixtures"
+        / fixture_name
+    )
+
+    parsed = model.model_validate_json(fixture_path.read_text())
+
+    assert parsed.extensions is not None
 
 
 def test_completion_error_keeps_valid_events_when_one_is_malformed():
