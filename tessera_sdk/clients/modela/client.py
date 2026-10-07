@@ -8,7 +8,7 @@ import requests
 
 from ...config import get_settings
 from ...constants import HTTPMethods
-from ...mcp import CompletionInclude
+from ...mcp import CompletionInclude, TruncationMarker
 from .._base.client import BaseClient
 from .._base.exceptions import TesseraError
 from .exceptions import _ModelaErrorFactory
@@ -92,6 +92,10 @@ class ModelaClient(BaseClient):
 
         Uses httpx (async) rather than the sync `requests`-based `_make_request`,
         since streaming a response body isn't supported by the shared BaseClient.
+
+        A truncation marker for a channel is yielded only when it reports more
+        dropped records than the last one yielded for that channel; otherwise it
+        is removed from its chunk. The latest marker per channel is authoritative.
         """
         request = ChatCompletionRequest(
             messages=messages,
@@ -115,6 +119,8 @@ class ModelaClient(BaseClient):
             write=self.timeout,
             pool=self.timeout,
         )
+
+        dropped_by_channel: dict[CompletionInclude | str, int] = {}
 
         async with (
             httpx.AsyncClient(timeout=stream_timeout) as http_client,
@@ -140,7 +146,26 @@ class ModelaClient(BaseClient):
                         f"[{self.__class__.__name__}] /chat/completions: "
                         f"received a malformed streaming chunk: {e}"
                     ) from e
-                yield ChatCompletionChunk(**chunk_payload)
+                chunk = ChatCompletionChunk(**chunk_payload)
+                self._drop_stale_truncation(chunk, dropped_by_channel)
+                yield chunk
+
+    @staticmethod
+    def _drop_stale_truncation(
+        chunk: ChatCompletionChunk,
+        dropped_by_channel: dict[CompletionInclude | str, int],
+    ) -> None:
+        marker = chunk.extensions.truncation if chunk.extensions else None
+        if marker is None:
+            return
+        previous = dropped_by_channel.get(marker.channel)
+        if previous is not None and marker.dropped_count <= previous:
+            logger.warning(
+                "Dropped duplicate Modela streaming truncation marker for a channel"
+            )
+            chunk.extensions.truncation = None
+            return
+        dropped_by_channel[marker.channel] = marker.dropped_count
 
     async def _raise_for_streaming_status(self, response: httpx.Response) -> None:
         if response.status_code < 400:
@@ -159,7 +184,7 @@ class ModelaClient(BaseClient):
             context=f"[{class_name}] /chat/completions",
             detail=detail,
             events=extensions.events,
-            truncations=extensions.truncations,
+            truncations=self._attached_truncations(extensions),
         )
 
     def _prepare_http_error(
@@ -173,8 +198,20 @@ class ModelaClient(BaseClient):
         return _ModelaErrorFactory.from_tessera_error(
             error,
             extensions.events,
-            extensions.truncations,
+            self._attached_truncations(extensions),
         )
+
+    @staticmethod
+    def _attached_truncations(
+        extensions: ChatCompletionExtensions,
+    ) -> list[TruncationMarker]:
+        # Exceptions carry only events, so a marker for any other channel would
+        # describe a retained prefix the caller cannot see.
+        return [
+            marker
+            for marker in extensions.truncations
+            if marker.channel is CompletionInclude.EVENTS
+        ]
 
     @staticmethod
     def _extensions_from_payload(payload: Any) -> ChatCompletionExtensions:

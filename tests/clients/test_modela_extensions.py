@@ -147,7 +147,7 @@ def test_non_streaming_response_parses_one_truncation_per_channel():
     )
 
 
-def test_non_streaming_response_keeps_first_marker_for_duplicate_channel(caplog):
+def test_non_streaming_response_keeps_largest_marker_for_duplicate_channel(caplog):
     response = ChatCompletionResponse(
         **{
             **RESPONSE,
@@ -169,8 +169,37 @@ def test_non_streaming_response_keeps_first_marker_for_duplicate_channel(caplog)
     )
 
     assert response.extensions is not None
-    assert [marker.dropped_count for marker in response.extensions.truncations] == [2]
+    assert [marker.dropped_count for marker in response.extensions.truncations] == [8]
     assert "duplicate Modela completion truncation marker" in caplog.text
+
+
+def test_non_streaming_response_keeps_marker_for_unknown_channel():
+    response = ChatCompletionResponse(
+        **{
+            **RESPONSE,
+            "extensions": {
+                "truncations": [
+                    {
+                        "channel": "messages",
+                        "truncated": True,
+                        "dropped_count": 3,
+                    },
+                    {
+                        "channel": "events",
+                        "truncated": True,
+                        "dropped_count": 1,
+                    },
+                ]
+            },
+        }
+    )
+
+    assert response.extensions is not None
+    assert [marker.channel for marker in response.extensions.truncations] == [
+        "messages",
+        CompletionInclude.EVENTS,
+    ]
+    assert response.extensions.truncations[0].dropped_count == 3
 
 
 def test_non_streaming_response_drops_only_malformed_truncation_marker():
@@ -365,6 +394,42 @@ def test_completion_error_exposes_event_truncation_marker():
     assert error.value.truncations[0].dropped_count == 2
 
 
+def test_completion_error_omits_markers_for_channels_not_on_exceptions():
+    response = requests.Response()
+    response.status_code = 500
+    response.url = "https://modela.example.com/chat/completions"
+    response._content = json.dumps(
+        {
+            "detail": "provider failed",
+            "extensions": {
+                "tool_executions": [TOOL_EXECUTION],
+                "truncations": [
+                    {
+                        "channel": "tool_executions",
+                        "truncated": True,
+                        "dropped_count": 4,
+                    },
+                    {
+                        "channel": "messages",
+                        "truncated": True,
+                        "dropped_count": 1,
+                    },
+                ],
+            },
+        }
+    ).encode()
+    response.headers["Content-Type"] = "application/json"
+    session = Mock()
+    session.headers = {}
+    session.request.return_value = response
+    client = ModelaClient(base_url="https://modela.example.com", session=session)
+
+    with pytest.raises(ModelaServerError) as error:
+        client.complete([CompletionMessage(role="user", content="Create a person")])
+
+    assert error.value.truncations == ()
+
+
 @pytest.mark.anyio
 async def test_streaming_error_exposes_unknown_domain_event_type(monkeypatch):
     unknown_event = {**EVENT, "event_type": "household.archived"}
@@ -440,6 +505,40 @@ def _patch_stream(monkeypatch, *chunks):
         "tessera_sdk.clients.modela.client.httpx.AsyncClient",
         client_with_transport,
     )
+
+
+@pytest.mark.anyio
+async def test_streaming_yields_only_growing_truncation_markers(monkeypatch):
+    def marker(dropped_count):
+        return _chunk(
+            extensions={
+                "truncation": {
+                    "channel": "events",
+                    "truncated": True,
+                    "dropped_count": dropped_count,
+                }
+            }
+        )
+
+    _patch_stream(monkeypatch, marker(2), marker(2), marker(5), marker(3))
+    client = ModelaClient(base_url="https://modela.example.com")
+
+    chunks = [
+        item
+        async for item in client.stream_complete(
+            [CompletionMessage(role="user", content="Create a person")],
+            include=[CompletionInclude.EVENTS],
+        )
+    ]
+
+    assert [
+        (
+            chunk.extensions.truncation.dropped_count
+            if chunk.extensions.truncation
+            else None
+        )
+        for chunk in chunks
+    ] == [2, None, 5, None]
 
 
 @pytest.mark.anyio

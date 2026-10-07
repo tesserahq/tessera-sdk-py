@@ -128,8 +128,10 @@ for event in response.extensions.events if response.extensions else ():
         refresh_people()
 ```
 
-Streaming completions carry one `event` or `tool_execution` per extension chunk;
-these chunks can have an empty `choices` list and must still be consumed. The
+Streaming completions carry one `event`, `tool_execution`, or `truncation` per
+extension chunk; these chunks can have an empty `choices` list and must still be
+consumed. The SDK yields a later truncation marker for a channel only when it
+reports more dropped records, so the latest marker per channel is authoritative. The
 non-streaming response carries the corresponding plural lists. Existing callers
 that request neither channel and read only completion choices are unchanged.
 
@@ -138,10 +140,15 @@ committed events in the error body. Every Modela client exception derives from
 `ModelaError` and preserves them on `error.events`, so a single
 `except ModelaError as error:` handler can reconcile state even though no normal
 completion response exists. Any error-response channel markers are available on
-`error.truncations`; tool execution diagnostics are not attached to exceptions.
+`error.truncations`; tool execution diagnostics are not attached to exceptions,
+so `error.truncations` only ever holds the `events` marker. If Modela sends more
+than one marker for a channel, the SDK keeps the one with the highest
+`dropped_count`. A marker for a channel this SDK version does not know keeps its
+raw string as `channel` instead of being dropped.
 
 ```python
 from tessera_sdk.clients.modela import ModelaError
+from tessera_sdk.mcp import CompletionInclude
 
 try:
     response = client.complete(messages, include=[CompletionInclude.EVENTS])

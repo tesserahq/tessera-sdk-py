@@ -18,7 +18,7 @@ class ModelaError(TesseraError):
 
     ``events`` holds committed domain events Modela returned in the error body,
     so a caller can reconcile state with a single ``except ModelaError``.
-    ``truncations`` reports whether a requested response channel was partial.
+    ``truncations`` holds the ``events`` channel marker, if that list is partial.
     """
 
     events: tuple[Event, ...]

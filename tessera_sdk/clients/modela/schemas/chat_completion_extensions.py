@@ -11,7 +11,7 @@ from pydantic import (
 )
 
 from ....infra.events import Event
-from ....mcp import ToolDebug, ToolExecutionRecord, TruncationMarker
+from ....mcp import CompletionInclude, ToolDebug, ToolExecutionRecord, TruncationMarker
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +40,21 @@ class _ToolExecutionRecordView(ToolExecutionRecord):
 
 
 class _TruncationMarkerView(TruncationMarker):
-    """Read-side marker that tolerates fields added by newer Modela versions."""
+    """Read-side marker that tolerates fields added by newer Modela versions.
+
+    ``channel`` keeps a channel this SDK version does not know as its raw string,
+    so a caller can still tell that a newer channel was partial.
+    """
 
     model_config = ConfigDict(extra="ignore")
+
+    channel: CompletionInclude | str = Field(  # type: ignore[assignment]
+        union_mode="left_to_right"
+    )
+
+
+def _channel_name(channel: CompletionInclude | str) -> str:
+    return channel.value if isinstance(channel, CompletionInclude) else channel
 
 
 def _log_dropped(field: str, error: ValidationError) -> None:
@@ -85,7 +97,9 @@ class ChatCompletionChunkExtensions(BaseModel):
 
     A truncation marker is sent in its own empty-choice chunk after the final
     retained record for its channel. It is not mixed into the event or tool
-    execution record types.
+    execution record types. ``ModelaClient.stream_complete`` yields at most one
+    marker per channel unless a later one reports more dropped records, so the
+    latest marker seen for a channel is authoritative.
     """
 
     event: Event | None = None
@@ -101,9 +115,10 @@ class ChatCompletionChunkExtensions(BaseModel):
 class ChatCompletionExtensions(BaseModel):
     """Extensions returned by a non-streaming completion or error response.
 
-    ``truncations`` contains at most one marker per channel. Each corresponding
-    record list is the retained prefix; ``dropped_count`` reports later records
-    omitted by the producer's response budget.
+    ``truncations`` contains at most one marker per channel; if Modela sends
+    several, the one reporting the most dropped records is kept. Each
+    corresponding record list is the retained prefix; ``dropped_count`` reports
+    later records omitted by the producer's response budget.
     """
 
     events: list[Event] = Field(default_factory=list)
@@ -118,16 +133,17 @@ class ChatCompletionExtensions(BaseModel):
     @field_validator("truncations", mode="after")
     @classmethod
     def _keep_one_marker_per_channel(cls, markers):
-        unique = []
-        seen_channels = set()
+        by_channel = {}
         for marker in markers:
-            if marker.channel in seen_channels:
-                logger.warning(
-                    "Dropped duplicate Modela completion truncation marker "
-                    "for channel %s",
-                    marker.channel.value,
-                )
+            kept = by_channel.get(marker.channel)
+            if kept is None:
+                by_channel[marker.channel] = marker
                 continue
-            seen_channels.add(marker.channel)
-            unique.append(marker)
-        return unique
+            logger.warning(
+                "Collapsed duplicate Modela completion truncation marker "
+                "for channel %s",
+                _channel_name(marker.channel),
+            )
+            if marker.dropped_count > kept.dropped_count:
+                by_channel[marker.channel] = marker
+        return list(by_channel.values())
