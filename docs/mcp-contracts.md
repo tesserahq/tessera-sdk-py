@@ -137,8 +137,8 @@ If a completion fails after a domain operation committed, Modela may return the
 committed events in the error body. Every Modela client exception derives from
 `ModelaError` and preserves them on `error.events`, so a single
 `except ModelaError as error:` handler can reconcile state even though no normal
-completion response exists. Tool execution diagnostics are not attached to
-exceptions.
+completion response exists. Any error-response channel markers are available on
+`error.truncations`; tool execution diagnostics are not attached to exceptions.
 
 ```python
 from tessera_sdk.clients.modela import ModelaError
@@ -148,14 +148,31 @@ try:
 except ModelaError as error:
     for event in error.events:
         reconcile(event)
+    if any(marker.channel == CompletionInclude.EVENTS for marker in error.truncations):
+        reconcile_from_api()
     raise
 ```
 
 Extensions are best-effort. The SDK drops an extension record it cannot parse
-(including truncation markers, whose wire position is not yet specified) and logs
-the validation error types without payload values. A malformed record never
-interrupts a stream, fails a completion, or hides the valid records next to it.
-Execution records ignore fields added by newer Modela versions.
+and logs the validation error types without payload values. A malformed record
+never interrupts a stream, fails a completion, or hides the valid records next
+to it. Execution records and truncation markers ignore fields added by newer
+Modela versions.
+
+When a response-channel budget is exhausted, Modela reports an SDK-owned
+`TruncationMarker` separately from the channel's records:
+
+- a streaming response uses an empty-choice chunk with
+  `extensions.truncation`, emitted after the final retained record for the
+  marker's channel;
+- a non-streaming or error response uses `extensions.truncations`, containing
+  at most one marker for each channel.
+
+The records returned for that channel are the retained prefix and
+`dropped_count` is the number of later records omitted. Markers never appear
+inside `events` or `tool_executions`, so those collections keep one stable item
+type. Older clients safely ignore these additive extension fields. Complete
+examples live in `tessera_sdk.clients.modela.fixtures`.
 
 For compatibility, callers may continue to place `include` under `extra_body`.
 New code should use the first-class `include` argument. Supplying both is allowed

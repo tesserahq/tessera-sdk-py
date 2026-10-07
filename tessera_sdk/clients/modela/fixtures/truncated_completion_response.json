@@ -1,0 +1,28 @@
+{
+  "id": "chatcmpl-example",
+  "object": "chat.completion",
+  "created": 1791331200,
+  "model": "example-chat-model",
+  "choices": [],
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 5,
+    "total_tokens": 15
+  },
+  "extensions": {
+    "events": [],
+    "tool_executions": [],
+    "truncations": [
+      {
+        "channel": "events",
+        "truncated": true,
+        "dropped_count": 2
+      },
+      {
+        "channel": "tool_executions",
+        "truncated": true,
+        "dropped_count": 4
+      }
+    ]
+  }
+}

@@ -8,7 +8,6 @@ import requests
 
 from ...config import get_settings
 from ...constants import HTTPMethods
-from ...infra.events import Event
 from ...mcp import CompletionInclude
 from .._base.client import BaseClient
 from .._base.exceptions import TesseraError
@@ -154,12 +153,13 @@ class ModelaClient(BaseClient):
         except (ValueError, KeyError, AttributeError):
             payload = {}
             detail = response.text
-        events = self._events_from_payload(payload)
+        extensions = self._extensions_from_payload(payload)
         raise _ModelaErrorFactory.from_http_status(
             status_code=response.status_code,
             context=f"[{class_name}] /chat/completions",
             detail=detail,
-            events=events,
+            events=extensions.events,
+            truncations=extensions.truncations,
         )
 
     def _prepare_http_error(
@@ -169,18 +169,21 @@ class ModelaClient(BaseClient):
             payload = response.json()
         except ValueError:
             payload = {}
-        events = self._events_from_payload(payload)
-        return _ModelaErrorFactory.from_tessera_error(error, events)
+        extensions = self._extensions_from_payload(payload)
+        return _ModelaErrorFactory.from_tessera_error(
+            error,
+            extensions.events,
+            extensions.truncations,
+        )
 
     @staticmethod
-    def _events_from_payload(payload: Any) -> tuple[Event, ...]:
+    def _extensions_from_payload(payload: Any) -> ChatCompletionExtensions:
         try:
-            extensions = ChatCompletionExtensions.model_validate(
+            return ChatCompletionExtensions.model_validate(
                 (payload or {}).get("extensions", {})
             )
         except (AttributeError, ValueError):
-            return ()
-        return tuple(extensions.events)
+            return ChatCompletionExtensions()
 
     def scan_file(
         self,

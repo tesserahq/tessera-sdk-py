@@ -1,0 +1,14 @@
+{
+  "id": "chatcmpl-example",
+  "object": "chat.completion.chunk",
+  "created": 1791331200,
+  "model": "example-chat-model",
+  "choices": [],
+  "extensions": {
+    "truncation": {
+      "channel": "events",
+      "truncated": true,
+      "dropped_count": 2
+    }
+  }
+}

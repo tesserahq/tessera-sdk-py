@@ -2,6 +2,7 @@ from collections.abc import Iterable
 from typing import ClassVar
 
 from ...infra.events import Event
+from ...mcp import TruncationMarker
 from .._base.exceptions import (
     TesseraAuthenticationError,
     TesseraClientError,
@@ -17,9 +18,11 @@ class ModelaError(TesseraError):
 
     ``events`` holds committed domain events Modela returned in the error body,
     so a caller can reconcile state with a single ``except ModelaError``.
+    ``truncations`` reports whether a requested response channel was partial.
     """
 
     events: tuple[Event, ...]
+    truncations: tuple[TruncationMarker, ...]
 
     def __init__(
         self,
@@ -27,9 +30,11 @@ class ModelaError(TesseraError):
         status_code: int | None = None,
         *,
         events: Iterable[Event] = (),
+        truncations: Iterable[TruncationMarker] = (),
     ):
         super().__init__(message, status_code)
         self.events = tuple(events)
+        self.truncations = tuple(truncations)
 
 
 class ModelaClientError(ModelaError, TesseraClientError):
@@ -47,8 +52,9 @@ class ModelaAuthenticationError(ModelaError, TesseraAuthenticationError):
         status_code: int = 401,
         *,
         events: Iterable[Event] = (),
+        truncations: Iterable[TruncationMarker] = (),
     ):
-        super().__init__(message, status_code, events=events)
+        super().__init__(message, status_code, events=events, truncations=truncations)
 
 
 class ModelaNotFoundError(ModelaError, TesseraNotFoundError):
@@ -58,8 +64,9 @@ class ModelaNotFoundError(ModelaError, TesseraNotFoundError):
         status_code: int = 404,
         *,
         events: Iterable[Event] = (),
+        truncations: Iterable[TruncationMarker] = (),
     ):
-        super().__init__(message, status_code, events=events)
+        super().__init__(message, status_code, events=events, truncations=truncations)
 
 
 class ModelaValidationError(ModelaError, TesseraValidationError):
@@ -69,8 +76,9 @@ class ModelaValidationError(ModelaError, TesseraValidationError):
         status_code: int = 400,
         *,
         events: Iterable[Event] = (),
+        truncations: Iterable[TruncationMarker] = (),
     ):
-        super().__init__(message, status_code, events=events)
+        super().__init__(message, status_code, events=events, truncations=truncations)
 
 
 class _ModelaErrorFactory:
@@ -102,6 +110,7 @@ class _ModelaErrorFactory:
         context: str,
         detail: str | None,
         events: Iterable[Event] = (),
+        truncations: Iterable[TruncationMarker] = (),
     ) -> TesseraError:
         error_type, default_detail = cls._classification_for(status_code)
         message = cls._message(
@@ -110,16 +119,19 @@ class _ModelaErrorFactory:
             context,
             detail or default_detail,
         )
-        return cls._construct(error_type, message, status_code, events)
+        return cls._construct(error_type, message, status_code, events, truncations)
 
     @classmethod
     def from_tessera_error(
         cls,
         error: TesseraError,
         events: Iterable[Event] = (),
+        truncations: Iterable[TruncationMarker] = (),
     ) -> TesseraError:
         error_type = cls._BASE_ERROR_TYPES.get(type(error), ModelaError)
-        return cls._construct(error_type, str(error), error.status_code, events)
+        return cls._construct(
+            error_type, str(error), error.status_code, events, truncations
+        )
 
     @classmethod
     def _classification_for(cls, status_code: int):
@@ -143,5 +155,10 @@ class _ModelaErrorFactory:
         return f"{context}: {status_code} {detail}"
 
     @staticmethod
-    def _construct(error_type, message, status_code, events):
-        return error_type(message, status_code, events=events)
+    def _construct(error_type, message, status_code, events, truncations):
+        return error_type(
+            message,
+            status_code,
+            events=events,
+            truncations=truncations,
+        )
