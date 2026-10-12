@@ -27,14 +27,16 @@ class SendBroadcastRequest(BaseModel):
     broadcast — requires a "*"-domain/global grant on the caller's side."""
 
     from_email: Optional[EmailStr] = None
-    """Sender email address. Falls back to the template's default if not provided."""
+    """Sender email address. Required for inline html; when sending via a
+    template, falls back to the template's default if not provided."""
 
     reply_to: Optional[EmailStr] = None
     """Reply-to address. Falls back to the template's reply_to if not provided and
     sending via a template."""
 
     subject: Optional[str] = None
-    """Email subject line. Required unless using a template with its own subject."""
+    """Email subject line. Required for inline html (rendered with Mako, so it
+    can use template_variables); templates use their own subject."""
 
     html: Optional[str] = None
     """HTML content of the email. Mutually exclusive with template_id/template_alias."""
@@ -50,6 +52,16 @@ class SendBroadcastRequest(BaseModel):
 
     template_alias: Optional[str] = None
     """Template alias for templated broadcasts."""
+
+    layout_id: Optional[UUID] = None
+    """Layout to wrap inline `html` in. Only valid with inline html — a
+    template uses its own layout, and combining the two is rejected. Sendly
+    resolves the layout once when it accepts the broadcast and freezes it for
+    the whole batch; an unknown or deleted layout is rejected (404)."""
+
+    layout_alias: Optional[str] = None
+    """Layout alias, as an alternative to layout_id (layout_id wins if both
+    are given). Same rules as layout_id."""
 
     template_variables: Dict[str, Any] = Field(default_factory=dict)
     """Shared template variables, merged with each recipient's own attributes."""

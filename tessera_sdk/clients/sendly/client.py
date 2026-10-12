@@ -14,6 +14,8 @@ from .schemas.send_broadcast_request import SendBroadcastRequest
 from .schemas.send_broadcast_response import SendBroadcastResponse
 from .schemas.get_broadcast_response import GetBroadcastResponse
 from .schemas.broadcast_recipient_result import BroadcastRecipientPageResponse
+from .schemas.render_request import RenderRequest
+from .schemas.render_response import RenderResponse
 from ...config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -97,6 +99,37 @@ class SendlyClient(BaseClient):
             HTTPMethods.POST, endpoint, data=request.model_dump(mode="json")
         )
         return SendBroadcastResponse(**response.json())
+
+    def render(
+        self,
+        request: RenderRequest,
+    ) -> RenderResponse:
+        """
+        Render content for preview, exactly as an inline send would render it.
+
+        Side-effect free: nothing is persisted or sent. Requires the layout
+        read grant.
+
+        Args:
+            request: RenderRequest with the html, subject, optional layout
+                reference, and template variables
+
+        Returns:
+            RenderResponse with the rendered html (wrapped in the layout when
+            one was given) and subject
+
+        Raises:
+            TesseraClientError: status_code 422 when a variable is missing or
+                the content has a Mako syntax error (Sendly's message names
+                the missing variables)
+            TesseraNotFoundError: The layout doesn't exist or was deleted
+        """
+        endpoint = "/render"
+
+        response = self._make_request(
+            HTTPMethods.POST, endpoint, data=request.model_dump(mode="json")
+        )
+        return RenderResponse(**response.json())
 
     def get_broadcast(
         self,
