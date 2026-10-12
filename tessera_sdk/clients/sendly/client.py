@@ -16,6 +16,7 @@ from .schemas.get_broadcast_response import GetBroadcastResponse
 from .schemas.broadcast_recipient_result import BroadcastRecipientPageResponse
 from .schemas.render_request import RenderRequest
 from .schemas.render_response import RenderResponse
+from .schemas.template_response import TemplateResponse
 from ...config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -130,6 +131,24 @@ class SendlyClient(BaseClient):
             HTTPMethods.POST, endpoint, data=request.model_dump(mode="json")
         )
         return RenderResponse(**response.json())
+
+    def get_template(self, template_id: str) -> TemplateResponse:
+        """
+        Get an email template by ID.
+
+        Args:
+            template_id: The template's ID
+
+        Returns:
+            TemplateResponse with the template's content and defaults
+
+        Raises:
+            TesseraNotFoundError: The template doesn't exist or was deleted
+        """
+        endpoint = f"/templates/{template_id}"
+
+        response = self._make_request(HTTPMethods.GET, endpoint)
+        return TemplateResponse(**response.json())
 
     def get_broadcast(
         self,

@@ -14,6 +14,7 @@ from .schemas import (
     GetBroadcastResponse,
     RenderRequest,
     RenderResponse,
+    TemplateResponse,
 )
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     "GetBroadcastResponse",
     "RenderRequest",
     "RenderResponse",
+    "TemplateResponse",
 ]

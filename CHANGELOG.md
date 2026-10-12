@@ -6,6 +6,7 @@
   inline `html` in a Sendly layout (frozen for the whole batch at accept time).
 - Add `SendlyClient.render()` (`POST /render`) with `RenderRequest` /
   `RenderResponse`, to preview content exactly as an inline send renders it.
+- Add `SendlyClient.get_template()` returning `TemplateResponse`.
 - Fix the authorization cache reading a different key (`authorized`) than it
   writes (`allowed`): with `AUTHORIZATION_CACHE_ENABLED=true`, every cached
   decision, including allowed ones, was answered with 403.
