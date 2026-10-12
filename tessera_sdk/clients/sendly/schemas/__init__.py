@@ -12,6 +12,9 @@ from .broadcast_recipient_result import (
 from .send_broadcast_request import SendBroadcastRequest
 from .send_broadcast_response import SendBroadcastResponse
 from .get_broadcast_response import GetBroadcastResponse
+from .render_request import RenderRequest
+from .render_response import RenderResponse
+from .template_response import TemplateResponse
 
 __all__ = [
     "CreateEmailRequest",
@@ -22,4 +25,7 @@ __all__ = [
     "SendBroadcastRequest",
     "SendBroadcastResponse",
     "GetBroadcastResponse",
+    "RenderRequest",
+    "RenderResponse",
+    "TemplateResponse",
 ]

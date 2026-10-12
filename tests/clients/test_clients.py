@@ -17,6 +17,7 @@ from tessera_sdk.clients.quore import QuoreClient
 from tessera_sdk.clients.sendly import SendlyClient
 from tessera_sdk.clients.sendly.schemas import (
     CreateEmailRequest,
+    RenderRequest,
     SendBroadcastRequest,
     BroadcastRecipient,
 )
@@ -299,6 +300,88 @@ def test_sendly_send_broadcast_includes_client_reference_id():
         sent_payload["recipients"][0]["client_reference_id"]
         == "9c3e0f2a-27c0-4a87-8065-46af46852db8"
     )
+
+
+def test_sendly_send_broadcast_sends_layout_reference():
+    request = SendBroadcastRequest(
+        project_id="7ffd064b-27c0-4a87-8065-46af46852db8",
+        from_email="news@example.com",
+        subject="Hello ${first_name}",
+        html="<p>Hi ${first_name}</p>",
+        layout_id="3f1c0d2a-27c0-4a87-8065-46af46852db8",
+        recipients=[BroadcastRecipient(email="a@example.com")],
+    )
+    payload = {
+        "batch_id": "b3f1c1d2-27c0-4a87-8065-46af46852db8",
+        "queued_count": 1,
+        "suppressed_count": 0,
+    }
+    client = SendlyClient(base_url="https://sendly.example.com")
+
+    with patch.object(
+        SendlyClient, "_make_request", return_value=DummyResponse(payload)
+    ) as mock_request:
+        client.send_broadcast(request)
+
+    sent_payload = mock_request.call_args.kwargs["data"]
+    assert sent_payload["layout_id"] == "3f1c0d2a-27c0-4a87-8065-46af46852db8"
+    assert sent_payload["layout_alias"] is None
+    assert sent_payload["template_id"] is None
+
+
+def test_sendly_render_posts_content_and_returns_rendered():
+    request = RenderRequest(
+        html="<p>Hi ${first_name}</p>",
+        subject="Hello ${first_name}",
+        layout_alias="brand",
+        template_variables={"first_name": "Alice"},
+    )
+    payload = {
+        "html": "<main><p>Hi Alice</p></main>",
+        "subject": "Hello Alice",
+    }
+    client = SendlyClient(base_url="https://sendly.example.com")
+
+    with patch.object(
+        SendlyClient, "_make_request", return_value=DummyResponse(payload)
+    ) as mock_request:
+        result = client.render(request)
+
+    mock_request.assert_called_once_with(
+        HTTPMethods.POST,
+        "/render",
+        data=request.model_dump(mode="json"),
+    )
+    assert result.html == "<main><p>Hi Alice</p></main>"
+    assert result.subject == "Hello Alice"
+
+
+def test_sendly_get_template_returns_template():
+    payload = {
+        "id": "4a1c0d2a-27c0-4a87-8065-46af46852db8",
+        "alias": "welcome",
+        "name": "Welcome",
+        "subject": "Hi ${first_name}",
+        "html": "<p>Hello</p>",
+        "from_email": "news@example.com",
+        "reply_to": None,
+        "layout_id": "3f1c0d2a-27c0-4a87-8065-46af46852db8",
+        "tags": ["broadcast"],
+        "created_at": "2026-10-01T00:00:00",
+    }
+    client = SendlyClient(base_url="https://sendly.example.com")
+
+    with patch.object(
+        SendlyClient, "_make_request", return_value=DummyResponse(payload)
+    ) as mock_request:
+        result = client.get_template("4a1c0d2a-27c0-4a87-8065-46af46852db8")
+
+    mock_request.assert_called_once_with(
+        HTTPMethods.GET, "/templates/4a1c0d2a-27c0-4a87-8065-46af46852db8"
+    )
+    assert result.subject == "Hi ${first_name}"
+    assert str(result.layout_id) == "3f1c0d2a-27c0-4a87-8065-46af46852db8"
+    assert result.tags == ["broadcast"]
 
 
 def test_sendly_get_broadcast_returns_status():

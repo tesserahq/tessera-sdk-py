@@ -12,6 +12,9 @@ from .schemas import (
     SendBroadcastRequest,
     SendBroadcastResponse,
     GetBroadcastResponse,
+    RenderRequest,
+    RenderResponse,
+    TemplateResponse,
 )
 
 __all__ = [
@@ -24,4 +27,7 @@ __all__ = [
     "SendBroadcastRequest",
     "SendBroadcastResponse",
     "GetBroadcastResponse",
+    "RenderRequest",
+    "RenderResponse",
+    "TemplateResponse",
 ]
