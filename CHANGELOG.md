@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Support SQLAlchemy 2.0.52 and later 2.x releases, allowing consumers to
+  upgrade the SDK without first moving to SQLAlchemy 2.1. Select the bundled
+  psycopg 3 driver explicitly for plain PostgreSQL URLs.
 - Add `layout_id` / `layout_alias` to Sendly's `SendBroadcastRequest`, to wrap
   inline `html` in a Sendly layout (frozen for the whole batch at accept time).
 - Add `SendlyClient.render()` (`POST /render`) with `RenderRequest` /
