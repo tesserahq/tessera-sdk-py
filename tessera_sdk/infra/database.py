@@ -10,6 +10,7 @@ from contextlib import contextmanager
 
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from sqlalchemy import create_engine
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import (
     sessionmaker,
 )
@@ -58,8 +59,13 @@ class DatabaseManager:
         self.application_name = application_name
 
         # Create engine
+        engine_url = make_url(database_url)
+        if engine_url.drivername == "postgresql":
+            # Select the driver shipped by the SDK instead of relying on the
+            # SQLAlchemy-version-dependent default PostgreSQL driver.
+            engine_url = engine_url.set(drivername="postgresql+psycopg")
         self.engine = create_engine(
-            database_url,
+            engine_url,
             pool_size=pool_size,
             max_overflow=max_overflow,
             pool_pre_ping=pool_pre_ping,
