@@ -14,6 +14,11 @@
   request session and the route's cached dependencies. The authorization
   cache and Custos call run in the threadpool.
 - Add `DatabaseManager(pool_timeout=...)` (default 30 s, SQLAlchemy's default).
+- Add the opt-in `async_database_access` architecture rule
+  (`tessera_sdk.testing.transaction_guards.EVENT_LOOP_RULE_NAMES`): fails on
+  `async def` functions that use a synchronous session, with a shrinking
+  baseline and `async_db_allowlist`. Existing baselines are unaffected until a
+  service adds the rule's test.
 
 - Add `layout_id` / `layout_alias` to Sendly's `SendBroadcastRequest`, to wrap
   inline `html` in a Sendly layout (frozen for the whole batch at accept time).
