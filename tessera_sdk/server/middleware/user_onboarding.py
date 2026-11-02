@@ -1,5 +1,6 @@
 import logging
 from typing import Optional, Dict, Any, List
+from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
@@ -149,6 +150,10 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
 
         logger.info(f"User data: {user_data}")
 
+        # The user service writes to the database: keep it off the event loop.
+        return await run_in_threadpool(self._onboard_user_sync, user_data, external_id)
+
+    def _onboard_user_sync(self, user_data, external_id: str) -> Optional[Any]:
         # Create UserService instance using the factory
         user_service = self.user_service_factory()
 
@@ -189,21 +194,14 @@ class UserOnboardingMiddleware(BaseHTTPMiddleware):
 
             token = auth_header[len("Bearer ") :]
 
-            # Set the authorization token in the client for this request
-            self.identies_client.session.headers.update(
-                {"Authorization": f"Bearer {token}"}
+            # Fetch complete user info from Identies in the threadpool (it is a
+            # blocking HTTP call), sending the token for this call only: the
+            # client session is shared by concurrent requests.
+            userinfo_response = await run_in_threadpool(
+                self.identies_client.userinfo, bearer_token=token
             )
-
-            try:
-                # Fetch complete user info from Identies using the client
-                userinfo_response = self.identies_client.userinfo()
-                logger.info(f"Userinfo response: {userinfo_response}")
-                return userinfo_response
-
-            finally:
-                # Clean up: remove the Authorization header from client after use
-                if "Authorization" in self.identies_client.session.headers:
-                    del self.identies_client.session.headers["Authorization"]
+            logger.info(f"Userinfo response: {userinfo_response}")
+            return userinfo_response
 
         except TesseraAuthenticationError:
             logger.warning("Identies authentication failed during user onboarding")

@@ -159,3 +159,42 @@ def test_auth_middleware_rejects_inactive_api_key():
 
     assert response.status_code == 401
     assert response.json() == {"error": "Invalid API key"}
+
+
+def test_auth_middleware_runs_blocking_work_off_the_event_loop():
+    import threading
+
+    threads = {}
+
+    class DummyUserService:
+        def get_user_by_id_or_external_id(self, user_id_or_external_id):
+            threads["lookup"] = threading.get_ident()
+            return {"id": "user-1"}
+
+    async def handler(request):
+        threads["loop"] = threading.get_ident()
+        return JSONResponse({"user_id": request.state.user["id"]})
+
+    app = Starlette(routes=[Route("/protected", handler)])
+    app.add_middleware(
+        AuthenticationMiddleware,
+        skip_paths=["/health"],
+        user_service_factory=lambda: DummyUserService(),
+    )
+
+    def verify(token):
+        threads["verify"] = threading.get_ident()
+        return {"sub": "ext-1"}
+
+    with patch(
+        "tessera_sdk.server.middleware.authentication.TokenHandler.verify",
+        side_effect=verify,
+    ):
+        response = TestClient(app).get(
+            "/protected", headers={"Authorization": "Bearer jwt"}
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"user_id": "user-1"}
+    assert threads["verify"] != threads["loop"]
+    assert threads["lookup"] != threads["loop"]

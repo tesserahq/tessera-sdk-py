@@ -36,6 +36,7 @@ class DatabaseManager:
         pool_recycle: int = 300,
         pool_use_lifo: bool = True,
         autoflush: bool = False,
+        pool_timeout: float = 30,
     ):
         """
         Initialize the database manager.
@@ -53,6 +54,10 @@ class DatabaseManager:
                 (``session_scope``) pass ``True``; the default stays
                 ``False`` for backward compatibility and will change once
                 every service has migrated.
+            pool_timeout: Seconds to wait for a pooled connection before
+                raising ``sqlalchemy.exc.TimeoutError`` (SQLAlchemy's default
+                is 30). A short timeout fails a request fast when the pool is
+                saturated instead of holding its thread.
         """
         self.database_url = database_url
         self.application_name = application_name
@@ -65,6 +70,7 @@ class DatabaseManager:
             pool_pre_ping=pool_pre_ping,
             pool_recycle=pool_recycle,
             pool_use_lifo=pool_use_lifo,
+            pool_timeout=pool_timeout,
             connect_args={"application_name": application_name},
         )
         # skip_dep_check: the latest instrumentation release caps SQLAlchemy

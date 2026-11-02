@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Fix concurrent requests sharing a bearer token: API-key validation and
+  onboarding no longer set `Authorization` on the shared Identies client
+  session (an inactive key was also left on it). `IdentiesClient.introspect()`
+  and `userinfo()` accept `bearer_token=` for a single call.
+- Run `AuthenticationMiddleware` token verification, API-key introspection,
+  and user lookup, and `UserOnboardingMiddleware` Identies and user-service
+  calls, in the threadpool so they no longer block the event loop.
+- `authorize()` accepts a synchronous `domain_resolver` (run in the
+  threadpool) and a `domain_dependency=` FastAPI dependency that shares the
+  request session and the route's cached dependencies. The authorization
+  cache and Custos call run in the threadpool.
+- Add `DatabaseManager(pool_timeout=...)` (default 30 s, SQLAlchemy's default).
+
 - Add `layout_id` / `layout_alias` to Sendly's `SendBroadcastRequest`, to wrap
   inline `html` in a Sendly layout (frozen for the whole batch at accept time).
 - Add `SendlyClient.render()` (`POST /render`) with `RenderRequest` /

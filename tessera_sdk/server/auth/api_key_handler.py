@@ -106,23 +106,14 @@ class APIKeyHandler:
         if not api_key:
             return False
 
-        # Set the API key as Bearer; Identies introspect accepts JWT or API key in Bearer
-        self.identies_client.session.headers.update(
-            {"Authorization": f"Bearer {api_key}"}
-        )
-
-        # Call introspect to validate the API key
-        introspect_response = self.identies_client.introspect()
+        # Identies introspect accepts JWT or API key in Bearer. Send it for this
+        # call only: the client session is shared by concurrent requests.
+        introspect_response = self.identies_client.introspect(bearer_token=api_key)
 
         if introspect_response.active:
             logger.info(
                 f"X-API-Key validated successfully for user: {introspect_response.user_id}"
             )
-
-            # Remove the Bearer header after validation
-            if "Authorization" in self.identies_client.session.headers:
-                del self.identies_client.session.headers["Authorization"]
-
             return introspect_response.user
         else:
             return False

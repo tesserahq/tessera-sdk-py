@@ -23,6 +23,13 @@ from ...config import get_settings
 logger = logging.getLogger(__name__)
 
 
+def _bearer_kwargs(bearer_token: Optional[str]) -> dict[str, Any]:
+    """Request kwargs that authenticate one call without touching the session."""
+    if not bearer_token:
+        return {}
+    return {"headers": {"Authorization": f"Bearer {bearer_token}"}}
+
+
 class IdentiesClient(BaseClient):
     """
     A client for interacting with the Identies API.
@@ -56,17 +63,21 @@ class IdentiesClient(BaseClient):
 
     # User Management Methods
 
-    def userinfo(self) -> UserResponse:
+    def userinfo(self, bearer_token: Optional[str] = None) -> UserResponse:
         """
         Get the user info.
 
         Args:
-            None
+            bearer_token: Optional token to authenticate this call only. Pass
+                it instead of mutating ``session.headers``: the session is
+                shared by concurrent requests.
 
         Returns:
             UserInfo object
         """
-        response = self._make_request(HTTPMethods.GET, "/userinfo")
+        response = self._make_request(
+            HTTPMethods.GET, "/userinfo", **_bearer_kwargs(bearer_token)
+        )
         return UserResponse(**response.json())
 
     def get_user(self, user_id: Optional[str] = None) -> UserResponse:
@@ -114,12 +125,13 @@ class IdentiesClient(BaseClient):
         response = self._make_request(HTTPMethods.GET, endpoint)
         return UserResponse(**response.json())
 
-    def introspect(self) -> IntrospectResponse:
+    def introspect(self, bearer_token: Optional[str] = None) -> IntrospectResponse:
         """
         Introspect a token.
 
         Args:
-            None
+            bearer_token: Optional JWT or API key to introspect, sent as this
+                call's Bearer token only (see ``userinfo``).
 
         Returns:
             IntrospectResponse object
@@ -127,7 +139,11 @@ class IdentiesClient(BaseClient):
         Raises:
             IdentiesNotFoundError: If client is not found
         """
-        response = self._make_request(HTTPMethods.POST, "/api-keys/introspect")
+        response = self._make_request(
+            HTTPMethods.POST,
+            "/api-keys/introspect",
+            **_bearer_kwargs(bearer_token),
+        )
         return IntrospectResponse(**response.json())
 
     # External Accounts Methods
