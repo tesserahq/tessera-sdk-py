@@ -6,10 +6,10 @@ from fastapi import HTTPException
 
 from tessera_sdk.clients._base.exceptions import (
     TesseraAuthenticationError,
-    TesseraValidationError,
     TesseraClientError,
-    TesseraServerError,
     TesseraError,
+    TesseraServerError,
+    TesseraValidationError,
 )
 from tessera_sdk.server.dependencies import authorization as authorization_dependency
 from tessera_sdk.server.dependencies.authorization import authorize
@@ -398,3 +398,136 @@ def test_get_authorization_cache_enabled_creates_cache():
         ),
     ):
         assert authorization_dependency._get_authorization_cache() is cache_instance
+
+
+_CUSTOS_SETTINGS = SimpleNamespace(
+    custos_api_url="https://custos.example.com",
+    authorization_cache_enabled=False,
+    authorization_cache_ttl=300,
+)
+
+
+def test_authorize_requires_exactly_one_domain_source():
+    with pytest.raises(ValueError):
+        authorize("read", "resource")
+
+    with pytest.raises(ValueError):
+        authorize(
+            "read",
+            "resource",
+            lambda _request: "d",
+            domain_dependency=lambda: "d",
+        )
+
+
+@pytest.mark.anyio
+async def test_authorize_runs_sync_resolver_off_the_event_loop():
+    import threading
+
+    loop_thread = threading.get_ident()
+    seen = {}
+
+    def resolve_domain(_request):
+        seen["thread"] = threading.get_ident()
+        return "domain-1"
+
+    request = _make_request(
+        user=SimpleNamespace(id="user-1"), headers={"Authorization": "Bearer t"}
+    )
+    custos = Mock()
+    custos.authorize.return_value = DummyAuthorizeResponse(True)
+    custos.session.headers = {}
+
+    with (
+        patch(
+            "tessera_sdk.server.dependencies.authorization.get_settings",
+            return_value=_CUSTOS_SETTINGS,
+        ),
+        patch(
+            "tessera_sdk.server.dependencies.authorization.CustosClient",
+            return_value=custos,
+        ),
+    ):
+        assert await authorize("read", "thing", resolve_domain)(request) is True
+
+    assert seen["thread"] != loop_thread
+    assert custos.authorize.call_args.kwargs["domain"] == "domain-1"
+
+
+@pytest.mark.anyio
+async def test_authorize_awaits_awaitable_from_plain_callable():
+    async def resolve(_request):
+        return "domain-2"
+
+    request = _make_request(
+        user=SimpleNamespace(id="user-1"), headers={"Authorization": "Bearer t"}
+    )
+    custos = Mock()
+    custos.authorize.return_value = DummyAuthorizeResponse(True)
+    custos.session.headers = {}
+
+    with (
+        patch(
+            "tessera_sdk.server.dependencies.authorization.get_settings",
+            return_value=_CUSTOS_SETTINGS,
+        ),
+        patch(
+            "tessera_sdk.server.dependencies.authorization.CustosClient",
+            return_value=custos,
+        ),
+    ):
+        dependency = authorize("read", "thing", lambda request: resolve(request))
+        assert await dependency(request) is True
+
+    assert custos.authorize.call_args.kwargs["domain"] == "domain-2"
+
+
+def test_authorize_domain_dependency_shares_route_dependencies():
+    from fastapi import Depends, FastAPI
+    from fastapi.testclient import TestClient
+
+    loads = []
+
+    def get_thing(thing_id: str):
+        loads.append(thing_id)
+        return SimpleNamespace(id=thing_id, account_id="account-9")
+
+    def thing_domain(thing=Depends(get_thing)) -> str:
+        return thing.account_id
+
+    app = FastAPI()
+
+    @app.middleware("http")
+    async def set_user(request, call_next):
+        request.state.user = SimpleNamespace(id="user-1")
+        return await call_next(request)
+
+    @app.get("/things/{thing_id}")
+    def read_thing(
+        thing=Depends(get_thing),
+        _authorized=Depends(authorize("read", "thing", domain_dependency=thing_domain)),
+    ):
+        return {"id": thing.id}
+
+    custos = Mock()
+    custos.authorize.return_value = DummyAuthorizeResponse(True)
+    custos.session.headers = {}
+
+    with (
+        patch(
+            "tessera_sdk.server.dependencies.authorization.get_settings",
+            return_value=_CUSTOS_SETTINGS,
+        ),
+        patch(
+            "tessera_sdk.server.dependencies.authorization.CustosClient",
+            return_value=custos,
+        ),
+    ):
+        response = TestClient(app).get(
+            "/things/t-1", headers={"Authorization": "Bearer t"}
+        )
+
+    assert response.status_code == 200
+    # FastAPI caches get_thing per request: authorization adds no extra load.
+    assert loads == ["t-1"]
+    assert custos.authorize.call_args.kwargs["domain"] == "account-9"

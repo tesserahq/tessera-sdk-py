@@ -1,5 +1,6 @@
 import logging
 from typing import Optional, List
+from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.exceptions import HTTPException
@@ -47,6 +48,19 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             if request.url.path.startswith(skip_path):
                 return await call_next(request)
 
+        # Token verification, API-key introspection, and the user lookup are
+        # blocking network and database calls. Run them in the threadpool so
+        # they never stall the event loop shared by every in-flight request.
+        result = await run_in_threadpool(self._authenticate, request)
+        if isinstance(result, JSONResponse):
+            return result
+
+        # Store user info in request state for use by endpoints
+        request.state.user = result
+        return await call_next(request)
+
+    def _authenticate(self, request: Request):
+        """Resolve the request's user, or the error response to return."""
         # Check for X-API-Key header first
         if self.api_key_handler.has_api_key_header(request.headers):
             api_key = self.api_key_handler.get_api_key(request.headers)
@@ -56,11 +70,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 return JSONResponse(
                     status_code=401, content={"error": "Invalid API key"}
                 )
-
-            # Store user info in request state for use by endpoints
-            request.state.user = user
-
-            return await call_next(request)
+            return user
 
         # Check for Bearer token (may be JWT or API key if it starts with "ak_")
         if not self.token_handler.has_bearer_token_header(request.headers):
@@ -77,9 +87,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 return JSONResponse(
                     status_code=401, content={"error": "Invalid API key"}
                 )
-
-            request.state.user = user
-            return await call_next(request)
+            return user
 
         # Otherwise treat as JWT
         try:
@@ -104,8 +112,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                     external_id=external_user_id,
                     needs_onboarding=True,
                 )
-
-            request.state.user = user
+            return user
 
         except HTTPException as e:
             if e.status_code == status.HTTP_401_UNAUTHORIZED:
@@ -122,5 +129,3 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 return JSONResponse(
                     status_code=e.status_code, content={"error": e.detail}
                 )
-
-        return await call_next(request)

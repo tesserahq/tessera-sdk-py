@@ -60,17 +60,10 @@ class TokenHandler:
         """Verify API key via Identies introspect; return payload with 'sub' for user resolution."""
         if not self.identies_client:
             raise UnauthorizedException(detail="API key verification not configured")
-        self.identies_client.session.headers.update(
-            {"Authorization": f"Bearer {token}"}
-        )
-        try:
-            response = self.identies_client.introspect()
-            if response.active and response.user_id is not None:
-                return {"sub": str(response.user_id)}
-            raise UnauthorizedException(detail="Invalid or expired API key")
-        finally:
-            if "Authorization" in self.identies_client.session.headers:
-                del self.identies_client.session.headers["Authorization"]
+        response = self.identies_client.introspect(bearer_token=token)
+        if response.active and response.user_id is not None:
+            return {"sub": str(response.user_id)}
+        raise UnauthorizedException(detail="Invalid or expired API key")
 
     def _candidate_providers(self, token: str) -> list[dict]:
         """Narrow the configured providers to those that may have issued ``token``.

@@ -33,6 +33,16 @@ In a service::
 
 Regenerate the baseline after a migration slice with
 ``UPDATE_TRANSACTION_BASELINE=1 pytest tests/architecture``.
+
+Event-loop rules are opt-in, so adopting a new SDK release never fails a
+service whose baseline predates them. A service enables one with its own
+test::
+
+    from tessera_sdk.testing.transaction_guards import EVENT_LOOP_RULE_NAMES
+
+    @pytest.mark.parametrize("rule", EVENT_LOOP_RULE_NAMES)
+    def test_event_loop_rule_matches_baseline(rule):
+        assert_matches_baseline(CONFIG, rule)
 """
 
 from __future__ import annotations
@@ -87,6 +97,9 @@ class TransactionGuardConfig:
     # Allowlisted early commits: (path relative to app_root, function) -> reason.
     early_commit_allowlist: Mapping[tuple[str, str], str] = field(default_factory=dict)
     session_receiver: re.Pattern[str] = DEFAULT_SESSION_RECEIVER
+    # Allowlisted ``async def`` functions that use a synchronous session:
+    # (path relative to app_root, function) -> reason.
+    async_db_allowlist: Mapping[tuple[str, str], str] = field(default_factory=dict)
 
 
 def _parse(path: Path) -> tuple[ast.AST, dict[ast.AST, ast.AST]]:
@@ -314,6 +327,80 @@ def unsynchronized_dml_violations(config: TransactionGuardConfig) -> list[str]:
     return violations
 
 
+# Matches Session/DbSession anywhere in an annotation (e.g. inside
+# Annotated[...]) but not AsyncSession.
+SESSION_PARAM_ANNOTATIONS = re.compile(
+    r"(?<![A-Za-z_])(DbSession|Session)(?![A-Za-z_])"
+)
+SESSION_SCOPE_NAMES = frozenset({"session_scope", "SessionLocal", "db_session"})
+
+
+def _async_body_nodes(function: ast.AsyncFunctionDef) -> Iterator[ast.AST]:
+    """Nodes that run on the event loop: the body minus nested functions."""
+    stack = list(function.body)
+    while stack:
+        node = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            continue
+        yield node
+        stack.extend(ast.iter_child_nodes(node))
+
+
+def async_database_access_violations(config: TransactionGuardConfig) -> list[str]:
+    """``async def`` functions that use a synchronous SQLAlchemy session.
+
+    Synchronous database I/O inside ``async def`` runs on the event loop: a
+    slow query, or a wait for a pooled connection, stalls every request in the
+    process. Such code belongs in a plain ``def`` (FastAPI and FastMCP run it
+    in the threadpool) or behind ``run_in_threadpool``.
+
+    Flags a function that declares a session parameter (``Session``,
+    ``DbSession``, or ``db``), opens a session scope, constructs a repository,
+    or calls a method on a session receiver without awaiting it.
+    """
+    violations = []
+    for path in _iter_files(config, None):
+        tree, _parents = _parse(path)
+        relative = _relative(config, path)
+        for function in ast.walk(tree):
+            if not isinstance(function, ast.AsyncFunctionDef):
+                continue
+            if (relative, function.name) in config.async_db_allowlist:
+                continue
+            arguments = function.args.args + function.args.kwonlyargs
+            reasons = set()
+            for argument in arguments:
+                annotation = (
+                    ast.unparse(argument.annotation) if argument.annotation else ""
+                )
+                if SESSION_PARAM_ANNOTATIONS.search(annotation) or argument.arg == "db":
+                    reasons.add("session_param")
+            awaited = set()
+            for node in _async_body_nodes(function):
+                if isinstance(node, ast.Await):
+                    awaited.add(id(node.value))
+            for node in _async_body_nodes(function):
+                if not isinstance(node, ast.Call) or id(node) in awaited:
+                    continue
+                func = node.func
+                name = (
+                    func.id
+                    if isinstance(func, ast.Name)
+                    else func.attr if isinstance(func, ast.Attribute) else ""
+                )
+                if name in SESSION_SCOPE_NAMES:
+                    reasons.add(name)
+                elif name.endswith("Repository"):
+                    reasons.add("repository")
+                elif isinstance(func, ast.Attribute) and config.session_receiver.search(
+                    ast.unparse(func.value)
+                ):
+                    reasons.add("session_call")
+            if reasons:
+                violations.append(f"{relative}::{function.name}")
+    return violations
+
+
 RULES: dict[str, Callable[[TransactionGuardConfig], list[str]]] = {
     "transaction_lifecycle": transaction_lifecycle_violations,
     "session_construction": session_construction_violations,
@@ -323,6 +410,13 @@ RULES: dict[str, Callable[[TransactionGuardConfig], list[str]]] = {
 }
 RULE_NAMES = sorted(RULES)
 
+# Opt-in rules (see the module docstring).
+EVENT_LOOP_RULES: dict[str, Callable[[TransactionGuardConfig], list[str]]] = {
+    "async_database_access": async_database_access_violations,
+}
+EVENT_LOOP_RULE_NAMES = sorted(EVENT_LOOP_RULES)
+ALL_RULES = {**RULES, **EVENT_LOOP_RULES}
+
 
 def load_baseline(config: TransactionGuardConfig) -> dict[str, dict[str, int]]:
     if not config.baseline_path.exists():
@@ -330,10 +424,15 @@ def load_baseline(config: TransactionGuardConfig) -> dict[str, dict[str, int]]:
     return json.loads(config.baseline_path.read_text())
 
 
-def write_baseline(config: TransactionGuardConfig) -> None:
+def write_baseline(
+    config: TransactionGuardConfig, include: tuple[str, ...] = ()
+) -> None:
+    """Rewrite the baseline for every default rule, every opt-in rule it
+    already tracks, and the opt-in rules in ``include``."""
+    opted_in = (set(include) | set(load_baseline(config))) & set(EVENT_LOOP_RULES)
+    tracked = list(RULES) + sorted(opted_in)
     baseline = {
-        rule: dict(sorted(Counter(collect(config)).items()))
-        for rule, collect in RULES.items()
+        rule: dict(sorted(Counter(ALL_RULES[rule](config)).items())) for rule in tracked
     }
     config.baseline_path.write_text(json.dumps(baseline, indent=2) + "\n")
 
@@ -343,7 +442,7 @@ def compare_with_baseline(
 ) -> tuple[list[str], list[str]]:
     """Return ``(new, fixed)``: violations not in the baseline, and baseline
     entries that no longer occur."""
-    actual = Counter(RULES[rule](config))
+    actual = Counter(ALL_RULES[rule](config))
     allowed = Counter(load_baseline(config).get(rule, {}))
     new = sorted((actual - allowed).elements())
     fixed = sorted((allowed - actual).elements())
@@ -356,7 +455,7 @@ def assert_matches_baseline(config: TransactionGuardConfig, rule: str) -> None:
     With ``UPDATE_TRANSACTION_BASELINE=1`` the baseline is rewritten first.
     """
     if os.environ.get(UPDATE_ENV_VAR) == "1":
-        write_baseline(config)
+        write_baseline(config, include=(rule,))
 
     new, fixed = compare_with_baseline(config, rule)
     assert not new, f"New {rule} violations:\n  " + "\n  ".join(new)

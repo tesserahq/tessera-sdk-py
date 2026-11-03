@@ -212,3 +212,63 @@ def test_onboarding_can_be_skipped_for_paths():
     # UserNeedsOnboarding has no `id`, and we skipped onboarding, so handler returns None
     assert response.json() == {"user_id": None}
     userinfo_mock.assert_not_called()
+
+
+def test_onboarding_sends_token_per_call_and_runs_off_the_event_loop():
+    import threading
+
+    threads = {}
+    onboarding_user = UserNeedsOnboarding(needs_onboarding=True, external_id="ext-3")
+
+    class DummyUserService:
+        def onboard_user(self, user_data):
+            threads["onboard"] = threading.get_ident()
+            return {"id": "local-3"}
+
+    timestamp = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    userinfo = UserResponse(
+        id=uuid4(),
+        email="user@example.com",
+        first_name="Ada",
+        last_name="Lovelace",
+        created_at=timestamp,
+        updated_at=timestamp,
+    )
+
+    def fake_userinfo(self, bearer_token=None):
+        threads["userinfo"] = threading.get_ident()
+        threads["token"] = bearer_token
+        threads["session_auth"] = self.session.headers.get("Authorization")
+        return userinfo
+
+    class RecordLoopThread(BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            threads["loop"] = threading.get_ident()
+            return await call_next(request)
+
+    app = _build_app(
+        user=onboarding_user, user_service_factory=lambda: DummyUserService()
+    )
+    app.add_middleware(RecordLoopThread)
+
+    with (
+        patch(
+            "tessera_sdk.server.middleware.user_onboarding.get_settings",
+            return_value=SimpleNamespace(
+                identies_api_url="https://identies.example.com"
+            ),
+        ),
+        patch(
+            "tessera_sdk.server.middleware.user_onboarding.IdentiesClient.userinfo",
+            fake_userinfo,
+        ),
+    ):
+        response = TestClient(app).get(
+            "/protected", headers={"Authorization": "Bearer token-3"}
+        )
+
+    assert response.status_code == 200
+    assert threads["token"] == "token-3"
+    assert threads["session_auth"] is None
+    assert threads["userinfo"] != threads["loop"]
+    assert threads["onboard"] != threads["loop"]

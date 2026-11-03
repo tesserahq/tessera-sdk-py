@@ -26,3 +26,17 @@ def test_engine_is_instrumented_for_tracing(uninstrumented):
     db_manager = DatabaseManager(database_url=DATABASE_URL, application_name="test")
 
     assert db_manager.engine.dispatch.before_cursor_execute
+
+
+def test_pool_timeout_defaults_to_sqlalchemy_default():
+    db_manager = DatabaseManager(database_url=DATABASE_URL, application_name="test")
+
+    assert db_manager.engine.pool.timeout() == 30
+
+
+def test_pool_timeout_is_configurable():
+    db_manager = DatabaseManager(
+        database_url=DATABASE_URL, application_name="test", pool_timeout=5
+    )
+
+    assert db_manager.engine.pool.timeout() == 5

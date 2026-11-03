@@ -196,3 +196,88 @@ def test_update_env_var_rewrites_the_baseline(app_root, monkeypatch):
     assert_matches_baseline(config, "transaction_lifecycle")
 
     assert config.baseline_path.exists()
+
+
+def test_async_database_access_flags_sync_sessions_on_the_event_loop(tmp_path):
+    from tessera_sdk.testing.transaction_guards import (
+        async_database_access_violations,
+    )
+
+    root = tmp_path / "app"
+    _write(
+        root,
+        "routers/pets.py",
+        """
+        async def read_pet(pet_id, db: DbSession):
+            return db.get(Pet, pet_id)
+
+        async def infer_domain(request):
+            with session_scope() as db:
+                return PetRepository(db).get_pet(request.path_params["id"])
+
+        async def list_pets(db: Annotated[Session, Depends(get_db)]):
+            return []
+
+        def sync_route(db: DbSession):
+            return db.get(Pet, 1)
+
+        async def uses_async_session(session: AsyncSession):
+            return await session.execute(select(Pet))
+
+        async def annotated(session: Annotated[Session, Depends(get_db)]):
+            return []
+
+        async def offloads(request):
+            def work():
+                with session_scope() as db:
+                    return db.get(Pet, 1)
+            return await run_in_threadpool(work)
+
+        async def no_database(request):
+            return {"ok": True}
+
+        async def allowed(db):
+            return db.get(Pet, 1)
+        """,
+    )
+    config = _config(
+        root,
+        async_db_allowlist={("routers/pets.py", "allowed"): "documented exception"},
+    )
+
+    assert sorted(async_database_access_violations(config)) == [
+        "routers/pets.py::annotated",
+        "routers/pets.py::infer_domain",
+        "routers/pets.py::list_pets",
+        "routers/pets.py::read_pet",
+    ]
+
+
+def test_event_loop_rules_are_opt_in_for_existing_baselines(app_root, monkeypatch):
+    from tessera_sdk.testing.transaction_guards import EVENT_LOOP_RULE_NAMES
+
+    _write(
+        app_root,
+        "routers/pets.py",
+        """
+        async def read_pet(db: DbSession):
+            return db.get(Pet, 1)
+        """,
+    )
+    config = _config(app_root)
+
+    write_baseline(config)
+    assert set(json.loads(config.baseline_path.read_text())) == set(RULES)
+
+    monkeypatch.setenv("UPDATE_TRANSACTION_BASELINE", "1")
+    for rule in EVENT_LOOP_RULE_NAMES:
+        assert_matches_baseline(config, rule)
+    monkeypatch.delenv("UPDATE_TRANSACTION_BASELINE")
+
+    baseline = json.loads(config.baseline_path.read_text())
+    assert list(baseline)[: len(RULES)] == list(RULES)
+    assert baseline["async_database_access"] == {"routers/pets.py::read_pet": 1}
+
+    # Once tracked, a plain regeneration keeps the opt-in rule.
+    write_baseline(config)
+    assert "async_database_access" in json.loads(config.baseline_path.read_text())
