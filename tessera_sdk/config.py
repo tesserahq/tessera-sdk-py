@@ -138,6 +138,9 @@ class Settings(BaseSettings):
     nats_url: str = Field(
         default="nats://localhost:4222", json_schema_extra={"env": "NATS_URL"}
     )
+    nats_connect_timeout: float = Field(
+        default=10.0, json_schema_extra={"env": "NATS_CONNECT_TIMEOUT"}
+    )
     event_type_prefix: str = Field(
         default="com.mylinden", json_schema_extra={"env": "EVENT_TYPE_PREFIX"}
     )
