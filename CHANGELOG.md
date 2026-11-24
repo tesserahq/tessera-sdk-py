@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- `NatsEventPublisher` fails fast and says why when NATS rejects the
+  connection. NATS's `Authorization Violation` (and other errors a retry
+  cannot fix) now abort the connect at once on every faststream version;
+  before, nats-py retried for about two minutes and reported
+  `NoServersError`, which reads as a network problem. Connecting is bounded
+  by the new `NATS_CONNECT_TIMEOUT` (default 10 s), and `publish_sync`
+  holds a reference to its background task so it cannot be
+  garbage-collected mid-publish.
 - Fix concurrent requests sharing a bearer token: API-key validation and
   onboarding no longer set `Authorization` on the shared Identies client
   session (an inactive key was also left on it). `IdentiesClient.introspect()`
